@@ -1,0 +1,24 @@
+---
+# ============================================================================
+# VERSION MANAGEMENT
+# ============================================================================
+# Centralized version management for Kubernetes ecosystem components.
+# Ensures version consistency between kubespray and CSI driver installations.
+
+# Kubespray Release
+# Reference: https://github.com/kubernetes-sigs/kubespray/releases
+# v2.29.0 deploys Kubernetes v1.33.5 by default
+kubespray_version: "2.29.0"
+kube_version: "1.33.5"
+kube_version_min_required: "1.31.0"
+
+# etcd Version
+# Reference: https://github.com/etcd-io/etcd/releases
+etcd_version: "3.5.15"
+
+# DigitalOcean CSI Driver Version
+# Must be compatible with the Kubernetes version deployed by kubespray.
+# Reference: https://github.com/digitalocean/csi-digitalocean/releases
+csi_driver_version: "v4.8.0"  # Compatible with K8s 1.33.x
+
+# GitOps Tools Versions (see gitops-versions.yml)

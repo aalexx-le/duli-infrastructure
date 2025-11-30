@@ -25,8 +25,6 @@ provisioner:
     group_vars:
       all:
         become: true
-      k8s_cluster:
-        container_manager: docker
   playbooks:
     create: ../../../../../tests/cloud_playbooks/create-kubevirt.yml
     prepare: ../../../molecule/prepare.yml

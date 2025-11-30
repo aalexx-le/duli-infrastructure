@@ -9,63 +9,115 @@
     pod_wait_timeout: 600
     pod_wait_retries: 10
     pod_wait_delay: 15
+    # Map gitops version variables to shorter names
+    cert_manager_chart_version: "{{ gitops_cert_manager_chart_version }}"
+    argocd_chart_version: "{{ gitops_argocd_chart_version }}"
+    rancher_chart_version: "{{ gitops_rancher_chart_version }}"
   tasks:
     - name: Set paths
       set_fact:
-        helm_charts_dir: "{{ playbook_dir }}/../../helm/charts"
-        helm_values_dir: "{{ playbook_dir }}/../../helm/values"
+        helm_dir: "{{ playbook_dir }}/../../helm"
       run_once: true
 
-    - name: Create namespace
-      kubernetes.core.k8s:
-        name: "{{ namespace }}"
-        api_version: v1
-        kind: Namespace
-        state: present
-
-    - name: Ensure Bitnami Helm repository
+    - name: "Clean up conflicting CloudNativePG resources (first run only)"
       block:
-        - name: Check if Bitnami Helm repository exists
-          command: helm repo list
-          register: helm_repos
-          changed_when: false
+        - name: Check if CloudNativePG CRDs exist
+          kubernetes.core.k8s_info:
+            kind: CustomResourceDefinition
+            name: "clusters.postgresql.cnpg.io"
+          register: cnpg_crd_check
+          run_once: true
 
-        - name: Add Bitnami Helm repository
-          command: helm repo add bitnami https://charts.bitnami.com/bitnami
-          when: "'bitnami' not in helm_repos.stdout"
-          changed_when: true
+        - name: Delete conflicting CloudNativePG CRDs
+          kubernetes.core.k8s:
+            state: absent
+            kind: CustomResourceDefinition
+            name: "{{ item }}"
+            force: true
+          loop:
+            - "backups.postgresql.cnpg.io"
+            - "clips.postgresql.cnpg.io"
+            - "clusters.postgresql.cnpg.io"
+            - "imagecatalogs.postgresql.cnpg.io"
+            - "poolers.postgresql.cnpg.io"
+            - "publications.postgresql.cnpg.io"
+            - "subscriptions.postgresql.cnpg.io"
+          when: cnpg_crd_check.resources | length > 0
+          run_once: true
+          ignore_errors: true
 
-        - name: Update Bitnami Helm repository
-          command: helm repo update bitnami
-          changed_when: false
+    - name: Install CloudNativePG CRDs (cluster-scoped, install once)
+      block:
+        - name: Render CloudNativePG CRDs with Helm
+          command: helm template cloudnative-pg {{ helm_dir }}/cloudnative-pg --set crds.create=true
+          register: cnpg_crds_rendered
+          run_once: true
 
-    - name: "Set service config for {{ item.name }}"
+        - name: Apply CloudNativePG CRDs
+          kubernetes.core.k8s:
+            state: present
+            definition: "{{ cnpg_crds_rendered.stdout }}"
+          run_once: true
+
+    - name: Create system namespaces for operators
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ item }}"
+            labels:
+              tier: system
+      loop:
+        - cnpg-system
+      run_once: true
+
+    - name: Create environment-specific namespaces
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ item }}"
+            labels:
+              environment: "{{ item }}"
+              tier: application
+      loop:
+        - staging
+        - prod
+      run_once: true
+
+    # Set current namespace based on environment variable or default to prod
+    - name: Determine target namespace
       set_fact:
-        service_config: "{{ item.config }}"
-      loop: "{{ infrastructure_services }}"
-      loop_control:
-        label: "{{ item.name }}"
-      when: item.config is defined
+        target_namespace: "{{ target_environment | default('prod') }}"
+      run_once: true
+
+    # Note: Do NOT delete ClusterRole/ClusterRoleBinding for CNPG operator
+    # Helm will manage them properly on upgrade
 
     - name: "Deploy {{ item.name }} via Helm"
       kubernetes.core.helm:
         name: "{{ item.name }}"
-        chart_ref: "{{ item.chart }}"
-        release_namespace: "{{ namespace }}"
+        chart_ref: "{{ helm_dir }}/{{ item.chart }}"
+        release_namespace: "{{ 'cnpg-system' if item.operator | default(false) else target_namespace }}"
         create_namespace: true
-        values: "{{ lookup('template', helm_values_dir + '/' + item.values_file) | from_yaml }}"
+        values_files:
+          - "{{ helm_dir }}/{{ item.chart }}/values.yaml"
       loop: "{{ infrastructure_services }}"
       loop_control:
         label: "{{ item.name }}"
       retries: "{{ helm_retries }}"
       delay: "{{ helm_retry_delay }}"
-      until: result is succeeded
       register: helm_result
+      until: helm_result is succeeded
 
-    - name: "Wait for {{ item.name }} pods to be ready"
+    - name: "Wait for {{ item.name }} pods to be ready (operators)"
       kubernetes.core.k8s_info:
         kind: Pod
-        namespace: "{{ namespace }}"
+        namespace: "cnpg-system"
         label_selectors: "{{ item.label_selectors }}"
         wait: true
         wait_condition:
@@ -73,9 +125,312 @@
           status: "True"
         wait_sleep: 5
         wait_timeout: "{{ pod_wait_timeout }}"
-      loop: "{{ infrastructure_services }}"
+      loop: "{{ infrastructure_services | selectattr('operator', 'defined') | selectattr('operator', 'equalto', True) }}"
       loop_control:
         label: "{{ item.name }}"
       retries: "{{ pod_wait_retries }}"
       delay: "{{ pod_wait_delay }}"
       when: item.wait_for_pods | default(true)
+
+    - name: "Wait for {{ item.name }} pods to be ready (applications)"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ target_namespace }}"
+        label_selectors: "{{ item.label_selectors }}"
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      loop: "{{ infrastructure_services | rejectattr('operator', 'defined') | list + (infrastructure_services | selectattr('operator', 'defined') | rejectattr('operator', 'equalto', True) | list) }}"
+      loop_control:
+        label: "{{ item.name }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+      when: item.wait_for_pods | default(true)
+
+    # ============================================================================
+    # GITOPS TOOLS INSTALLATION
+    # ============================================================================
+
+    - name: Ensure required Helm repositories
+      block:
+        - name: Check if Helm repositories exist
+          command: helm repo list
+          register: helm_repos_argo
+          changed_when: false
+
+        - name: Add Argo Helm repository
+          command: helm repo add argo https://argoproj.github.io/argo-helm
+          when: "'argo' not in helm_repos_argo.stdout"
+          changed_when: "'argo' not in helm_repos_argo.stdout"
+
+        - name: Add Jetstack Helm repository (cert-manager)
+          command: helm repo add jetstack https://charts.jetstack.io
+          when: "'jetstack' not in helm_repos_argo.stdout"
+          changed_when: "'jetstack' not in helm_repos_argo.stdout"
+
+        - name: Add Rancher Helm repository
+          command: helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+          when: "'rancher-stable' not in helm_repos_argo.stdout"
+          changed_when: "'rancher-stable' not in helm_repos_argo.stdout"
+
+        - name: Update all Helm repositories
+          command: helm repo update
+          changed_when: false
+
+    - name: Install Cert-Manager
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        release_namespace: cert-manager
+        create_namespace: true
+        version: "{{ cert_manager_chart_version }}"
+        values:
+          installCRDs: true
+      retries: "{{ helm_retries }}"
+      delay: "{{ helm_retry_delay }}"
+      until: result is succeeded
+      register: cert_manager_result
+
+    - name: Wait for Cert-Manager pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: cert-manager
+        label_selectors:
+          - app.kubernetes.io/name=cert-manager
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+
+    - name: Install ArgoCD
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argo/argo-cd
+        release_namespace: argocd
+        create_namespace: true
+        version: "{{ argocd_chart_version }}"
+        values:
+          server:
+            service:
+              type: LoadBalancer
+      retries: "{{ helm_retries }}"
+      delay: "{{ helm_retry_delay }}"
+      until: result is succeeded
+      register: argocd_result
+
+    - name: Wait for ArgoCD pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: argocd
+        label_selectors:
+          - app.kubernetes.io/name=argo-cd
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+
+    - name: Install Rancher
+      kubernetes.core.helm:
+        name: rancher
+        chart_ref: rancher-stable/rancher
+        release_namespace: cattle-system
+        create_namespace: true
+        version: "{{ rancher_chart_version }}"
+        values:
+          hostname: "{{ rancher_hostname | default('rancher.local') }}"
+          bootstrapPassword: "{{ vault_rancher_bootstrap_password | default('admin') }}"
+          replicas: 3
+      retries: "{{ helm_retries }}"
+      delay: "{{ helm_retry_delay }}"
+      until: result is succeeded
+      register: rancher_result
+
+    - name: Wait for Rancher pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: cattle-system
+        label_selectors:
+          - app=rancher
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+
+    # ============================================================================
+    # DISPLAY LOADBALANCER IPS
+    # ============================================================================
+
+    - name: Get ArgoCD LoadBalancer IP
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: argocd-server
+        namespace: argocd
+      register: argocd_svc
+
+    - name: Display ArgoCD LoadBalancer information
+      debug:
+        msg: |
+          ╔════════════════════════════════════════════════════════════════╗
+          ║                     ARGOCD ACCESS INFORMATION                  ║
+          ╠════════════════════════════════════════════════════════════════╣
+          ║ Service:        argocd-server                                  ║
+          ║ Namespace:      argocd                                         ║
+          ║ Service Type:   {{ argocd_svc.resources[0].spec.type }}
+          ║ Cluster IP:     {{ argocd_svc.resources[0].spec.clusterIP }}
+          {% if argocd_svc.resources[0].status.loadBalancer.ingress %}
+          ║ LoadBalancer IP: {{ argocd_svc.resources[0].status.loadBalancer.ingress[0].ip }}
+          ║ Access URL:     https://{{ argocd_svc.resources[0].status.loadBalancer.ingress[0].ip }}
+          {% else %}
+          ║ LoadBalancer IP: (pending assignment from DigitalOcean)
+          {% endif %}
+          ║ Port:           443 (HTTPS)
+          ║                                                                 ║
+          ║ To get the admin password:                                     ║
+          ║ kubectl -n argocd get secret argocd-initial-admin-secret \     ║
+          ║   -o jsonpath="{.data.password}" | base64 -d                  ║
+          ║                                                                 ║
+          ║ Username: admin                                                ║
+          ╚════════════════════════════════════════════════════════════════╝
+
+    - name: Get Rancher LoadBalancer IP
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: rancher
+        namespace: cattle-system
+      register: rancher_svc
+
+    - name: Display Rancher LoadBalancer information
+      debug:
+        msg: |
+          ╔════════════════════════════════════════════════════════════════╗
+          ║                     RANCHER ACCESS INFORMATION                 ║
+          ╠════════════════════════════════════════════════════════════════╣
+          ║ Service:        rancher                                        ║
+          ║ Namespace:      cattle-system                                  ║
+          ║ Service Type:   {{ rancher_svc.resources[0].spec.type }}
+          ║ Cluster IP:     {{ rancher_svc.resources[0].spec.clusterIP }}
+          {% if rancher_svc.resources[0].status.loadBalancer.ingress %}
+          ║ LoadBalancer IP: {{ rancher_svc.resources[0].status.loadBalancer.ingress[0].ip }}
+          ║ Access URL:     https://{{ rancher_svc.resources[0].status.loadBalancer.ingress[0].ip }}
+          {% else %}
+          ║ LoadBalancer IP: (pending assignment from DigitalOcean)
+          {% endif %}
+          ║ Port:           443 (HTTPS)
+          ║                                                                 ║
+          ║ Bootstrap Password:                                            ║
+          ║ {{ vault_rancher_bootstrap_password | default('admin') }}
+          ║                                                                 ║
+          ║ Note: Rancher will generate its own admin password on first    ║
+          ║ login. Save it securely!                                       ║
+          ╚════════════════════════════════════════════════════════════════╝
+
+    - name: Summary of deployed services
+      debug:
+        msg: |
+          ╔════════════════════════════════════════════════════════════════╗
+          ║                  DEPLOYMENT SUMMARY                            ║
+          ╠════════════════════════════════════════════════════════════════╣
+          ║ ✓ Infrastructure Services (PostgreSQL, Redis, RabbitMQ)        ║
+          ║ ✓ Cert-Manager (TLS certificate management)                   ║
+          ║ ✓ ArgoCD (GitOps continuous deployment)                       ║
+          ║ ✓ Rancher (Multi-cluster management)                          ║
+          ║                                                                 ║
+          ║ All services are exposed via LoadBalancer (no Ingress)         ║
+          ║                                                                 ║
+          ║ Verify LoadBalancers in DigitalOcean:                          ║
+          ║ 1. Go to Cloud Dashboard → Networking → Load Balancers         ║
+          ║ 2. You should see 2 new LoadBalancers created                  ║
+          ║                                                                 ║
+          ║ Verify in Kubernetes:                                          ║
+          ║ kubectl get svc -n argocd argocd-server                        ║
+          ║ kubectl get svc -n cattle-system rancher                       ║
+          ╚════════════════════════════════════════════════════════════════╝
+
+    # ============================================================================
+    # APPLICATION SECRETS
+    # ============================================================================
+
+    - name: Create application secrets
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ item.name }}"
+            namespace: "{{ target_namespace }}"
+          type: Opaque
+          stringData:
+            password: "{{ item.password }}"
+      loop:
+        - name: postgres-credentials
+          password: "{{ vault_postgres_password }}"
+        - name: redis-credentials
+          password: "{{ vault_redis_password }}"
+        - name: rabbitmq-credentials
+          password: "{{ vault_rabbitmq_password }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # ============================================================================
+    # ARGOCD APPLICATIONS
+    # ============================================================================
+
+    - name: Determine environment
+      set_fact:
+        current_environment: "{{ target_environment | default('prod') }}"
+      run_once: true
+
+    - name: Deploy ArgoCD Applications
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
+      vars:
+        environment: "{{ current_environment }}"
+      loop:
+        - backend
+        - ai-service
+        - scheduler
+      loop_control:
+        label: "{{ item }}-{{ current_environment }}"
+      retries: 3
+      delay: 5
+      until: result is succeeded
+      register: argocd_apps_result
+
+    - name: Wait for ArgoCD Applications to sync
+      kubernetes.core.k8s_info:
+        kind: Application
+        namespace: argocd
+        name: "{{ item }}"
+        wait: true
+        wait_condition:
+          type: Synced
+          status: "True"
+        wait_sleep: 10
+        wait_timeout: 300
+      vars:
+        environment: "{{ current_environment }}"
+      loop:
+        - backend
+        - ai-service
+        - scheduler
+      loop_control:
+        label: "{{ item }}-{{ current_environment }}"
+      retries: 2
+      delay: 15

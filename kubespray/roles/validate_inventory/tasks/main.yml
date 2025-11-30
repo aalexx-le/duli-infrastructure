@@ -16,13 +16,15 @@
 
 - name: Stop if kube_control_plane group is empty
   assert:
-    that: groups.get( 'kube_control_plane' )
+    that:
+      - groups.get( 'kube_control_plane' ) | length > 0
   run_once: true
   when: not ignore_assert_errors
 
 - name: Stop if etcd group is empty in external etcd mode
   assert:
-    that: groups.get('etcd') or etcd_deployment_type == 'kubeadm'
+    that:
+      - groups.get('etcd') | length > 0 or etcd_deployment_type == 'kubeadm'
     fail_msg: "Group 'etcd' cannot be empty in external etcd mode"
   run_once: true
   when:
@@ -86,7 +88,7 @@
   assert:
     that: cloud_provider == 'external'
   when:
-    - cloud_provider
+    - cloud_provider | bool
     - not ignore_assert_errors
 
 - name: Check external_cloud_provider value
@@ -99,7 +101,7 @@
 - name: "Check that kube_service_addresses is a network range"
   assert:
     that:
-      - kube_service_addresses | ansible.utils.ipaddr('net')
+      - (kube_service_addresses | ansible.utils.ipaddr('net')) != False
     msg: "kube_service_addresses = '{{ kube_service_addresses }}' is not a valid network range"
   run_once: true
   when: ipv4_stack | bool
@@ -107,7 +109,7 @@
 - name: "Check that kube_pods_subnet is a network range"
   assert:
     that:
-      - kube_pods_subnet | ansible.utils.ipaddr('net')
+      - (kube_pods_subnet | ansible.utils.ipaddr('net')) != False
     msg: "kube_pods_subnet = '{{ kube_pods_subnet }}' is not a valid network range"
   run_once: true
   when: ipv4_stack | bool
@@ -133,7 +135,7 @@
 - name: "Check that kube_service_addresses_ipv6 is a network range"
   assert:
     that:
-      - kube_service_addresses_ipv6 | ansible.utils.ipaddr('net')
+      - (kube_service_addresses_ipv6 | ansible.utils.ipaddr('net')) != False
     msg: "kube_service_addresses_ipv6 = '{{ kube_service_addresses_ipv6 }}' is not a valid network range"
   run_once: true
   when: ipv6_stack | bool
@@ -141,7 +143,7 @@
 - name: "Check that kube_pods_subnet_ipv6 is a network range"
   assert:
     that:
-      - kube_pods_subnet_ipv6 | ansible.utils.ipaddr('net')
+      - (kube_pods_subnet_ipv6 | ansible.utils.ipaddr('net')) != False
     msg: "kube_pods_subnet_ipv6 = '{{ kube_pods_subnet_ipv6 }}' is not a valid network range"
   run_once: true
   when: ipv6_stack | bool

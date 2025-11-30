@@ -1,0 +1,35 @@
+{{- if .Values.cluster.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: postgresql-cnpg
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  description: "PostgreSQL HA Cluster"
+  imageName: {{ .Values.cluster.imageName }}
+  instances: {{ .Values.cluster.instances }}
+  
+  bootstrap:
+    initdb:
+      database: {{ .Values.cluster.bootstrap.initdb.database }}
+      owner: {{ .Values.cluster.bootstrap.initdb.owner }}
+      postInitApplicationSQL:
+{{- range .Values.cluster.bootstrap.initdb.postInitApplicationSQL }}
+        - {{ . | quote }}
+{{- end }}
+  
+  postgresql:
+    parameters:
+{{- range $key, $value := .Values.cluster.postgresql.parameters }}
+      {{ $key }}: {{ $value | quote }}
+{{- end }}
+  
+  primaryUpdateStrategy: unsupervised
+  
+  storage:
+    size: {{ .Values.cluster.storage.size }}
+    storageClass: {{ .Values.cluster.storage.storageClass }}
+{{- end }}

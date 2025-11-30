@@ -1,0 +1,102 @@
+---
+# ============================================================================
+# KUBESPRAY CONFIGURATION
+# ============================================================================
+# Download and runtime settings for kubespray cluster deployment
+
+# Download Configuration
+local_release_dir: /tmp/releases
+download_cache_dir: /tmp/kubespray_cache
+download_run_once: true
+download_localhost: false
+download_container: false
+
+# Container Runtime Configuration
+container_manager: "containerd"
+deploy_netchecker: false
+
+# etcd Deployment Type
+etcd_deployment_type: "kubeadm"
+
+# ============================================================================
+# KUBERNETES CLUSTER CONFIGURATION
+# ============================================================================
+
+# ============================================================================
+# STORAGE CONFIGURATION
+# ============================================================================
+storage_class: do-block-storage
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+# Secret Encryption at Rest (Kubespray)
+# Enable to encrypt Secrets in etcd. Must be configured before initial deployment.
+# Uncomment and configure for production environments:
+# kube_encrypt_secret_data: true
+# kube_encryption_algorithm: "secretbox"  # Options: secretbox, aescbc, aesgcm
+# kube_encryption_resources: [secrets]
+
+# ============================================================================
+# INFRASTRUCTURE SERVICES
+# ============================================================================
+infrastructure_services:
+  - name: cloudnative-pg
+    chart: cloudnative-pg
+    label_selectors:
+      - app.kubernetes.io/name=cloudnative-pg
+    wait_for_pods: true
+    operator: true
+    
+  - name: postgres
+    chart: postgresql-cnpg
+    label_selectors:
+      - app.kubernetes.io/name=postgresql-cnpg
+    wait_for_pods: true
+    config:
+      # Authentication
+      user: duli_user
+      password: "{{ vault_postgres_password }}"
+      database: duli_db
+      port: 5432
+      # High Availability
+      instances: 3
+      # Storage
+      persistence:
+        enabled: true
+        size: 50Gi
+        storageClass: "{{ storage_class }}"
+
+  - name: redis
+    chart: redis
+    label_selectors:
+      - app.kubernetes.io/name=redis
+    wait_for_pods: true
+    config:
+      # Authentication
+      password: "{{ vault_redis_password }}"
+      # High Availability
+      replicas:
+        master: 1 # Always 1 master
+        replica: 2 # Number of replica nodes
+        sentinel: 3 # Number of sentinel nodes (for failover)
+      # Image
+      image:
+        tag: "7-alpine"
+      # Storage
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: "{{ storage_class }}"
+
+  - name: rabbitmq
+    chart: rabbitmq-cluster-operator
+    label_selectors:
+      - app.kubernetes.io/name=rabbitmq-cluster-operator
+    wait_for_pods: true
+# ============================================================================
+# APPLICATION SERVICES
+# ============================================================================
+# Application services (backend, ai-service, scheduler) are managed by ArgoCD
+# Configuration is in helm/values/{app}-values-{environment}.yaml
+# Deployment templates are in gitops/applications/{app}.yml.j2

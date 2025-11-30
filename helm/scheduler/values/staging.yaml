@@ -1,0 +1,109 @@
+# ============================================================================
+# Scheduler Application Helm Values - Staging
+# ============================================================================
+# Staging environment configuration for Scheduler (n8n)
+# Special: Uses init container to construct DATABASE_URL from env vars
+# Used by ArgoCD with Helm native support
+# Deployed to: staging namespace
+
+replicaCount: 1
+
+image:
+  repository: registry.gitlab.com/duli.ai-engineering/scheduler
+  tag: latest
+  pullPolicy: Always
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Kubernetes Standard Labels (applied to all pods, services, deployments)
+labels:
+  app.kubernetes.io/name: scheduler
+  app.kubernetes.io/component: workflow-engine
+  app.kubernetes.io/instance: duli-scheduler
+  app.kubernetes.io/version: "latest"
+  app.kubernetes.io/managed-by: argocd
+  environment: staging
+  team: backend-team
+  tier: application
+
+# Service
+service:
+  type: ClusterIP
+  port: 5678
+  targetPort: 5678
+
+# Storage for n8n data
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: "do-block-storage"
+  mountPath: /home/node/.n8n
+
+# Resource limits (staging: moderate)
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+
+# Environment variables (DATABASE_URL constructed by init container)
+env:
+  - name: N8N_HOST
+    value: "scheduler.staging.local"
+  - name: N8N_PROTOCOL
+    value: "http"
+  - name: N8N_PORT
+    value: "5678"
+  - name: NODE_ENV
+    value: "staging"
+  - name: LOG_LEVEL
+    value: "debug"
+  - name: DATABASE_HOST
+    value: "postgres-rw.staging.svc.cluster.local"
+  - name: DATABASE_PORT
+    value: "5432"
+  - name: DATABASE_NAME
+    value: "duli_db"
+  - name: REDIS_HOST
+    value: "redis-master.staging.svc.cluster.local"
+  - name: REDIS_PORT
+    value: "6379"
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 5678
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 5678
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Pod disruption budget (staging: disabled)
+podDisruptionBudget:
+  enabled: false
+
+# Autoscaling (staging: disabled - single instance)
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+
+# Pod security
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: false

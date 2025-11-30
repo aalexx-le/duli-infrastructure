@@ -1,0 +1,24 @@
+---
+# ============================================================================
+# GITOPS TOOLS VERSIONS
+# ============================================================================
+# These versions are used only by Helm deployment playbooks
+# NOT by Kubespray, so they're in a separate file
+
+# ArgoCD (GitOps for Applications)
+# Reference: https://github.com/argoproj/argo-helm/releases
+# v2.14.0+ supports K8s 1.26-1.33
+gitops_argocd_version: "v2.14.20"
+gitops_argocd_chart_version: "7.8.20"
+
+# Rancher (Multi-cluster Management)
+# Reference: https://github.com/rancher/rancher/releases
+# v2.10.0+ supports K8s 1.26-1.33
+gitops_rancher_version: "v2.10.0"
+gitops_rancher_chart_version: "2.10.0"
+
+# Cert-Manager (TLS Certificate Management - required by Rancher)
+# Reference: https://github.com/cert-manager/cert-manager/releases
+# v1.16.0 is stable and supports K8s 1.33.5
+gitops_cert_manager_version: "v1.16.0"
+gitops_cert_manager_chart_version: "1.16.0"

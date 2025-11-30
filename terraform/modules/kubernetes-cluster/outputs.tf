@@ -53,5 +53,13 @@ output "first_control_plane_ip" {
 
 output "ssh_key_fingerprint" {
   description = "SSH key fingerprint"
-  value       = digitalocean_ssh_key.k8s.fingerprint
+  value       = digitalocean_ssh_key.public_key.fingerprint
+}
+
+output "droplet_ids" {
+  description = "All droplet IDs (control plane and worker)"
+  value = concat(
+    [for cp in digitalocean_droplet.control_plane : cp.id],
+    [for w in digitalocean_droplet.worker : w.id]
+  )
 }

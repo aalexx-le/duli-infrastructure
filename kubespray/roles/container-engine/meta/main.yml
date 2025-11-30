@@ -1,6 +1,10 @@
 # noqa role-name - this is a meta role that doesn't need a name
 ---
 dependencies:
+  - role: kubespray_defaults
+  - role: download
+    tags: download
+    when: "not skip_downloads"
   - role: container-engine/validate-container-engine
     tags:
       - container-engine

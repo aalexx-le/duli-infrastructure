@@ -1,0 +1,11 @@
+apiVersion: v2
+name: postgresql-cnpg
+description: PostgreSQL HA cluster using CloudNativePG operator
+type: application
+version: 1.0.0
+appVersion: "17"
+home: https://cloudnative-pg.io
+sources:
+  - https://github.com/cloudnative-pg/cloudnative-pg
+maintainers:
+  - name: Duli AI

@@ -5,9 +5,7 @@ download_cache_dir: /tmp/kubespray_cache
 # If this is true, debug information will be displayed but
 # may contain some private data, so it is recommended to set it to false
 # in the production environment.
-# false by default, unless we're running in CI. (CI_PROJECT_URL should be globally unique even if kubespray happens to run
-# in gitlab-ci in other contexts
-unsafe_show_logs: "{{ lookup('env', 'CI_PROJECT_URL') == 'https://gitlab.com/kargo-ci/kubernetes-sigs-kubespray' }}"
+unsafe_show_logs: false
 
 # do not delete remote cache files after using them
 # NOTE: Setting this parameter to TRUE is only really useful when developing kubespray
@@ -116,7 +114,7 @@ flannel_version: 0.27.3
 flannel_cni_version: 1.7.1-flannel1
 cni_version: "{{ (cni_binary_checksums['amd64'] | dict2items)[0].key }}"
 
-cilium_version: "1.18.4"
+cilium_version: "1.18.2"
 cilium_cli_version: "{{ (ciliumcli_binary_checksums['amd64'] | dict2items)[0].key }}"
 cilium_enable_hubble: false
 
@@ -142,7 +140,7 @@ scheduler_plugins_version: "{{ scheduler_plugins_supported_versions[kube_major_v
 
 yq_version: "{{ (yq_checksums['amd64'] | dict2items)[0].key }}"
 
-gateway_api_version: "{{ (gateway_api_standard_crds_checksums.no_arch | dict2items)[0].key }}"
+gateway_api_version: "1.2.1"
 gateway_api_channel: "standard"
 
 prometheus_operator_crds_version: "{{ (prometheus_operator_crds_checksums.no_arch | dict2items)[0].key }}"
@@ -251,7 +249,7 @@ cilium_hubble_ui_image_tag: "v0.13.3"
 cilium_hubble_ui_backend_image_repo: "{{ quay_image_repo }}/cilium/hubble-ui-backend"
 cilium_hubble_ui_backend_image_tag: "v0.13.3"
 cilium_hubble_envoy_image_repo: "{{ quay_image_repo }}/cilium/cilium-envoy"
-cilium_hubble_envoy_image_tag: "v1.34.10-1762597008-ff7ae7d623be00078865cff1b0672cc5d9bfc6d5"
+cilium_hubble_envoy_image_tag: "v1.34.7-1757592137-1a52bb680a956879722f48c591a2ca90f7791324"
 kube_ovn_container_image_repo: "{{ docker_image_repo }}/kubeovn/kube-ovn"
 kube_ovn_container_image_tag: "v{{ kube_ovn_version }}"
 kube_ovn_vpc_container_image_repo: "{{ docker_image_repo }}/kubeovn/vpc-nat-gateway"
@@ -276,9 +274,9 @@ haproxy_image_tag: 3.2.4-alpine
 # bundle with kubeadm; if not 'basic' upgrade can sometimes fail
 
 coredns_supported_versions:
-  '1.34': 1.12.1
   '1.33': 1.12.0
   '1.32': 1.11.3
+  '1.31': 1.11.3
 coredns_version: "{{ coredns_supported_versions[kube_major_version] }}"
 coredns_image_repo: "{{ kube_image_repo }}{{ '/coredns' if coredns_version is version('1.7.1', '>=') else '' }}/coredns"
 coredns_image_tag: "{{ 'v' if coredns_version is version('1.7.1', '>=') else '' }}{{ coredns_version }}"
@@ -326,22 +324,22 @@ cert_manager_webhook_image_repo: "{{ quay_image_repo }}/jetstack/cert-manager-we
 cert_manager_webhook_image_tag: "v{{ cert_manager_version }}"
 
 csi_attacher_image_repo: "{{ kube_image_repo }}/sig-storage/csi-attacher"
-csi_attacher_image_tag: "v4.4.2"
+csi_attacher_image_tag: "v3.3.0"
 csi_provisioner_image_repo: "{{ kube_image_repo }}/sig-storage/csi-provisioner"
-csi_provisioner_image_tag: "v3.6.2"
+csi_provisioner_image_tag: "v3.0.0"
 csi_snapshotter_image_repo: "{{ kube_image_repo }}/sig-storage/csi-snapshotter"
-csi_snapshotter_image_tag: "v6.3.2"
+csi_snapshotter_image_tag: "v5.0.0"
 csi_resizer_image_repo: "{{ kube_image_repo }}/sig-storage/csi-resizer"
-csi_resizer_image_tag: "v1.9.2"
+csi_resizer_image_tag: "v1.3.0"
 csi_node_driver_registrar_image_repo: "{{ kube_image_repo }}/sig-storage/csi-node-driver-registrar"
 csi_node_driver_registrar_image_tag: "v2.4.0"
 csi_livenessprobe_image_repo: "{{ kube_image_repo }}/sig-storage/livenessprobe"
-csi_livenessprobe_image_tag: "v2.11.0"
+csi_livenessprobe_image_tag: "v2.5.0"
 
 snapshot_controller_supported_versions:
-  '1.34': "v7.0.2"
   '1.33': "v7.0.2"
   '1.32': "v7.0.2"
+  '1.31': "v7.0.2"
 snapshot_controller_image_repo: "{{ kube_image_repo }}/sig-storage/snapshot-controller"
 snapshot_controller_image_tag: "{{ snapshot_controller_supported_versions[kube_major_version] }}"
 
@@ -786,9 +784,9 @@ downloads:
     url: "{{ calico_crds_download_url }}"
     unarchive: true
     unarchive_extra_opts:
-      - "--strip=3"
+      - "{{ '--strip=6' if (calico_version is version('3.22.3', '<')) else '--strip=3' }}"
       - "--wildcards"
-      - "*/libcalico-go/config/crd/"
+      - "{{ '*/_includes/charts/calico/crds/kdd/' if (calico_version is version('3.22.3', '<')) else '*/libcalico-go/config/crd/' }}"
     owner: "root"
     mode: "0755"
     groups:
@@ -1034,15 +1032,6 @@ downloads:
     repo: "{{ csi_resizer_image_repo }}"
     tag: "{{ csi_resizer_image_tag }}"
     checksum: "{{ csi_resizer_digest_checksum | default(None) }}"
-    groups:
-      - kube_node
-
-  csi_livenessprobe:
-    enabled: "{{ cinder_csi_enabled or aws_ebs_csi_enabled }}"
-    container: true
-    repo: "{{ csi_livenessprobe_image_repo }}"
-    tag: "{{ csi_livenessprobe_image_tag }}"
-    checksum: "{{ csi_livenessprobe_digest_checksum | default(None) }}"
     groups:
       - kube_node
 

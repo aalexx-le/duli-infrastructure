@@ -7,11 +7,13 @@
     - pause:
         seconds: 30
 
-    - command: kubectl cluster-info
+    - name: Validate cluster connectivity
+      command: kubectl cluster-info
       register: kubectl_check
       retries: 10
       delay: 10
       until: kubectl_check.rc == 0
+      changed_when: false
 
     - name: Check for ready nodes
       shell: kubectl get nodes -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' | grep -o True | wc -l
@@ -20,3 +22,40 @@
       delay: 10
       until: ready_nodes.stdout | trim | int > 0
       changed_when: false
+
+- name: Configure kubeconfig for local access
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Get kubeconfig from control plane
+      ansible.builtin.slurp:
+        src: /etc/kubernetes/admin.conf
+      register: kubeconfig_content
+      delegate_to: "{{ groups['kube_control_plane'][0] }}"
+      run_once: true
+
+    - name: Fix kubeconfig server IP
+      ansible.builtin.set_fact:
+        kubeconfig_fixed: "{{ kubeconfig_content['content'] | b64decode | regex_replace('server: https://127.0.0.1', 'server: https://' + hostvars[groups['kube_control_plane'][0]]['ansible_host']) }}"
+      run_once: true
+
+    - name: Create ~/.kube directory
+      ansible.builtin.file:
+        path: "{{ ansible_user_dir }}/.kube"
+        state: directory
+        mode: '0700'
+      run_once: true
+
+    - name: Write kubeconfig to ~/.kube/config
+      ansible.builtin.copy:
+        content: "{{ kubeconfig_fixed }}"
+        dest: "{{ ansible_user_dir }}/.kube/config"
+        mode: '0600'
+      run_once: true
+      notify: Display kubeconfig location
+
+  handlers:
+    - name: Display kubeconfig location
+      ansible.builtin.debug:
+        msg: "Kubeconfig written to {{ ansible_user_dir }}/.kube/config"
+      run_once: true

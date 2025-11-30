@@ -1,0 +1,98 @@
+# ============================================================================
+# AI-Service Application Helm Values - Staging
+# ============================================================================
+# Staging environment configuration for AI-Service
+# ML/AI workload with higher resource requirements
+# Used by ArgoCD with Helm native support
+# Deployed to: staging namespace
+
+replicaCount: 2
+
+image:
+  repository: registry.gitlab.com/duli.ai-engineering/ai-service
+  tag: latest
+  pullPolicy: Always
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Kubernetes Standard Labels (applied to all pods, services, deployments)
+labels:
+  app.kubernetes.io/name: ai-service
+  app.kubernetes.io/component: ml-service
+  app.kubernetes.io/instance: duli-ai-service
+  app.kubernetes.io/version: "latest"
+  app.kubernetes.io/managed-by: argocd
+  environment: staging
+  team: ai-team
+  tier: application
+
+# Service
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# Resource limits (staging: moderate, higher for ML)
+resources:
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"
+  requests:
+    cpu: "1000m"
+    memory: "1Gi"
+
+# Environment variables
+env:
+  - name: NODE_ENV
+    value: "staging"
+  - name: LOG_LEVEL
+    value: "debug"
+  - name: PYTHONUNBUFFERED
+    value: "1"
+  - name: DATABASE_HOST
+    value: "postgres-rw.staging.svc.cluster.local"
+  - name: DATABASE_PORT
+    value: "5432"
+  - name: DATABASE_NAME
+    value: "duli_db"
+  - name: REDIS_HOST
+    value: "redis-master.staging.svc.cluster.local"
+  - name: REDIS_PORT
+    value: "6379"
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Pod disruption budget (staging: minimal)
+podDisruptionBudget:
+  enabled: false
+
+# Autoscaling (staging: disabled for cost)
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 80
+
+# Pod security
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: false

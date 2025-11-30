@@ -18,7 +18,14 @@
     owner: root
     mode: "0755"
     backup: true
-  register: nginx_conf
+
+- name: Nginx-proxy | Get checksum from config
+  stat:
+    path: "{{ nginx_config_dir }}/nginx.conf"
+    get_attributes: false
+    get_checksum: true
+    get_mime: false
+  register: nginx_stat
 
 - name: Nginx-proxy | Write static pod
   template:

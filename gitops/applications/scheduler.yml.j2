@@ -1,0 +1,42 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: scheduler
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: scheduler
+    app.kubernetes.io/component: application
+    app.kubernetes.io/managed-by: argocd
+    environment: {{ environment }}
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/aalexx-le/duli-infrastructure
+    targetRevision: main
+    path: helm/charts/scheduler
+    helm:
+      releaseName: scheduler
+      valueFiles:
+        - ../../values/scheduler-values-{{ environment }}.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ environment }}
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+    automated:
+      prune: true
+      selfHeal: true
+      allow:
+        empty: false
+
+  # Ignore unknown Helm schema errors
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/conversion/webhook/clientConfig/caBundle

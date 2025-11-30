@@ -42,7 +42,7 @@ Kubespray expects users to use one of the following variables sources for settin
 |----------------------------------------|------------------------------------------------------------------------------|
 | inventory vars                         |                                                                              |
 |  - **inventory group_vars**            | most used                                                                    |
-|  - inventory host_vars                 | host specific vars overrides, group_vars is usually more practical           |
+|  - inventory host_vars                 | host specifc vars overrides, group_vars is usually more practical            |
 | **extra vars** (always win precedence) | override with ``ansible-playbook -e @foo.yml``                               |
 
 [!IMPORTANT]
@@ -122,7 +122,7 @@ The following tags are defined in playbooks:
 | metrics_server                 | Configuring metrics_server                            |
 | netchecker                     | Installing netchecker K8s app                         |
 | network                        | Configuring networking plugins for K8s                |
-| mounts                         | Umount kubelet dirs when resetting                    |
+| mounts                         | Umount kubelet dirs when reseting                     |
 | multus                         | Network plugin multus                                 |
 | nginx                          | Configuring LB for kube-apiserver instances           |
 | node                           | Configuring K8s minion (compute) node role            |
@@ -181,13 +181,17 @@ ansible-playbook -i inventory/sample/hosts.ini cluster.yml \
 
 Note: use `--tags` and `--skip-tags` wisely and only if you're 100% sure what you're doing.
 
+## Mitogen
+
+Mitogen support is deprecated, please see [mitogen related docs](/docs/advanced/mitogen.md) for usage and reasons for deprecation.
+
 ## Troubleshooting Ansible issues
 
 Having the wrong version of ansible, ansible collections or python dependencies can cause issue.
-In particular, Kubespray ship custom modules which Ansible needs to find, for which you should specify [ANSIBLE_LIBRARY](https://docs.ansible.com/ansible/latest/dev_guide/developing_locally.html#adding-a-module-or-plugin-outside-of-a-collection)
+In particular, Kubespray ship custom modules which Ansible needs to find, for which you should specify [ANSIBLE_LIBRAY](https://docs.ansible.com/ansible/latest/dev_guide/developing_locally.html#adding-a-module-or-plugin-outside-of-a-collection)
 
 ```ShellSession
-export ANSIBLE_LIBRARY=<kubespray_dir>/library`
+export ANSIBLE_LIBRAY=<kubespray_dir>/library`
 ```
 
 A simple way to ensure you get all the correct version of Ansible is to use

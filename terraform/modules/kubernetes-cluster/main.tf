@@ -16,29 +16,28 @@ terraform {
   }
 }
 
-# SSH Key for K8s Nodes
-resource "digitalocean_ssh_key" "k8s" {
-  name       = "${var.environment}-k8s-key"
-  public_key = file(var.ssh_public_key_path)
+# SSH Key for Nodes - creates a new key each time
+resource "digitalocean_ssh_key" "public_key" {
+  name       = "duli-ai"
+  public_key = file("${path.root}/../${var.ssh_public_key_path}")
 }
 
 # Control Plane Nodes
 resource "digitalocean_droplet" "control_plane" {
   count = var.control_plane_count
 
-  name   = "${var.environment}-control-${format("%02d", count.index + 1)}"
+  name   = "control-plane-${format("%02d", count.index + 1)}"
   region = var.region
   image  = var.droplet_image
   size   = var.control_plane_size
 
   vpc_uuid = var.vpc_id
-  ssh_keys = [digitalocean_ssh_key.k8s.fingerprint]
+  ssh_keys = [digitalocean_ssh_key.public_key.fingerprint]
 
   monitoring = var.enable_monitoring
   ipv6       = true
 
   tags = [
-    "environment:${var.environment}",
     "role:control-plane"
   ]
 
@@ -51,19 +50,18 @@ resource "digitalocean_droplet" "control_plane" {
 resource "digitalocean_droplet" "worker" {
   count = var.worker_count
 
-  name   = "${var.environment}-worker-${format("%02d", count.index + 1)}"
+  name   = "worker-${format("%02d", count.index + 1)}"
   region = var.region
   image  = var.droplet_image
   size   = var.worker_size
 
   vpc_uuid = var.vpc_id
-  ssh_keys = [digitalocean_ssh_key.k8s.fingerprint]
+  ssh_keys = [digitalocean_ssh_key.public_key.fingerprint]
 
   monitoring = var.enable_monitoring
   ipv6       = true
 
   tags = [
-    "environment:${var.environment}",
     "role:worker"
   ]
 

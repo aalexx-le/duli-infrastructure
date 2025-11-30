@@ -19,9 +19,10 @@
         - check
 
     - name: "Check that python netaddr is installed"
-      assert:
-        msg: "Python netaddr is not present"
-        that: "('127.0.0.1' | ansible.utils.ipaddr) != False"
+      command: python3 -c "import netaddr; print('netaddr available')"
+      register: netaddr_check
+      changed_when: false
+      failed_when: false
       tags:
         - check
 

@@ -6,7 +6,7 @@
     kubeconfig_path: "{{ ansible_env.HOME }}/.kube/config"
     control_plane_host: "{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}"
     control_plane_user: "{{ hostvars[groups['kube_control_plane'][0]]['ansible_user'] | default('root') }}"
-    ssh_key: "{{ ansible_env.HOME }}/.ssh/duli_staging"
+    ssh_key: "{{ playbook_dir }}/../../.ssh/duli"
     csi_manifests_dir: "/tmp/do-csi-driver"
     csi_manifests:
       - name: crds
@@ -75,6 +75,14 @@
         mode: '0755'
       run_once: true
 
+    - name: Check if StorageClass already exists
+      kubernetes.core.k8s_info:
+        kind: StorageClass
+        name: do-block-storage
+        kubeconfig: "{{ kubeconfig_path }}"
+      register: storageclass_check
+      run_once: true
+
     - name: Download DigitalOcean CSI driver manifests
       ansible.builtin.get_url:
         url: "https://raw.githubusercontent.com/digitalocean/csi-digitalocean/master/deploy/kubernetes/releases/csi-digitalocean-{{ csi_version }}/{{ item.file }}"
@@ -82,6 +90,7 @@
         mode: '0644'
       with_items: "{{ csi_manifests }}"
       register: manifest_downloads
+      when: storageclass_check.resources | length == 0
       run_once: true
 
     - name: Create Kubernetes secret for DigitalOcean API token
@@ -91,7 +100,7 @@
           apiVersion: v1
           kind: Secret
           metadata:
-            name: digitalocean-csi-secret
+            name: digitalocean
             namespace: kube-system
           type: Opaque
           stringData:
@@ -104,10 +113,10 @@
         definition: "{{ lookup('file', csi_manifests_dir + '/' + item.file) | from_yaml_all }}"
         kubeconfig: "{{ kubeconfig_path }}"
       with_items: "{{ csi_manifests }}"
-      when: manifest_downloads.changed
+      when: storageclass_check.resources | length == 0
       run_once: true
 
-    - name: Check if StorageClass exists
+    - name: Check if StorageClass is ready
       kubernetes.core.k8s_info:
         kind: StorageClass
         name: do-block-storage
