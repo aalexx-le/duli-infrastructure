@@ -1,0 +1,6 @@
+---
+- import_playbook: kubespray.yml
+- import_playbook: do_csi_driver.yml
+- import_playbook: helm_infrastructure.yml
+- import_playbook: helm_applications.yml
+- import_playbook: helm_ingress.yml

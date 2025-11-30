@@ -1,0 +1,22 @@
+---
+- import_playbook: ../../kubespray/cluster.yml
+
+- name: Validate cluster deployment
+  hosts: kube_control_plane
+  tasks:
+    - pause:
+        seconds: 30
+
+    - command: kubectl cluster-info
+      register: kubectl_check
+      retries: 10
+      delay: 10
+      until: kubectl_check.rc == 0
+
+    - name: Check for ready nodes
+      shell: kubectl get nodes -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' | grep -o True | wc -l
+      register: ready_nodes
+      retries: 15
+      delay: 10
+      until: ready_nodes.stdout | trim | int > 0
+      changed_when: false

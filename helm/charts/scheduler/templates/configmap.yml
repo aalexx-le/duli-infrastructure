@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "scheduler.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "scheduler.labels" . | nindent 4 }}
+data:
+  N8N_HOST: "{{ .Values.n8n.host }}"
+  N8N_PROTOCOL: "{{ .Values.n8n.protocol }}"
+  N8N_PORT: "{{ .Values.n8n.port | quote }}"
+  GENERIC_TIMEZONE: "UTC"
+  # Database connection details (non-sensitive)
+  DATABASE_HOST: "postgres-postgresql-ha-pgpool.duli.svc.cluster.local"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "{{ .Values.postgres.database }}"
+  DATABASE_USER: "{{ .Values.postgres.user }}"

@@ -1,0 +1,33 @@
+replicaCount: {{ service_config.replicas }}
+image:
+  repository: n8nio/n8n
+  tag: {{ service_config.image.tag }}
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5678
+
+resources:
+  limits:
+    cpu: "{{ service_config.resources.limits.cpu }}"
+    memory: "{{ service_config.resources.limits.memory }}"
+  requests:
+    cpu: "{{ service_config.resources.requests.cpu }}"
+    memory: "{{ service_config.resources.requests.memory }}"
+
+persistence:
+  enabled: true
+  storageClass: "{{ storage_class }}"
+  size: 10Gi
+
+postgres:
+  user: "{{ postgres_config.user }}"
+  password: "{{ postgres_config.password }}"
+  database: "{{ postgres_config.database }}"
+
+n8n:
+  host: scheduler.duli.local
+  protocol: https
+  port: 5678

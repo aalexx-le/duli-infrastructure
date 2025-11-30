@@ -1,0 +1,66 @@
+---
+- name: Deploy application services
+  hosts: localhost
+  connection: local
+  vars:
+    namespace: duli
+    helm_retries: 3
+    helm_retry_delay: 10
+    pod_wait_timeout: 300
+    pod_wait_retries: 5
+    pod_wait_delay: 10
+  tasks:
+    - name: Set paths
+      set_fact:
+        helm_charts_dir: "{{ playbook_dir }}/../../helm/charts"
+        helm_values_dir: "{{ playbook_dir }}/../../helm/values"
+      run_once: true
+
+    - name: "Set service config for {{ item.name }}"
+      set_fact:
+        service_config: "{{ item.config }}"
+      loop: "{{ application_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: item.config is defined
+
+    - name: "Extract postgres config for scheduler"
+      set_fact:
+        postgres_config: "{{ infrastructure_services | selectattr('name', 'equalto', 'postgres') | map(attribute='config') | first }}"
+      loop: "{{ application_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: item.name == 'scheduler'
+
+    - name: "Deploy {{ item.name }} via Helm"
+      kubernetes.core.helm:
+        name: "{{ item.name }}"
+        chart_ref: "{{ item.chart }}"
+        release_namespace: "{{ namespace }}"
+        create_namespace: true
+        values: "{{ lookup('template', helm_values_dir + '/' + item.values_file) | from_yaml }}"
+      loop: "{{ application_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      retries: "{{ helm_retries }}"
+      delay: "{{ helm_retry_delay }}"
+      until: result is succeeded
+      register: helm_result
+
+    - name: "Wait for {{ item.name }} pods to be ready"
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ namespace }}"
+        label_selectors: "{{ item.label_selectors }}"
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      loop: "{{ application_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+      when: item.wait_for_pods | default(true)

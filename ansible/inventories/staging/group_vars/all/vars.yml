@@ -1,0 +1,148 @@
+---
+# ============================================================================
+# ENVIRONMENT CONFIGURATION
+# ============================================================================
+deploy_env: staging
+kubernetes_cluster: staging
+storage_class: do-block-storage
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+# Secret Encryption at Rest (Kubespray)
+# Enable to encrypt Secrets in etcd. Must be configured before initial deployment.
+# Uncomment and configure for production environments:
+# kube_encrypt_secret_data: true
+# kube_encryption_algorithm: "secretbox"  # Options: secretbox, aescbc, aesgcm
+# kube_encryption_resources: [secrets]
+
+# ============================================================================
+# INFRASTRUCTURE SERVICES
+# ============================================================================
+infrastructure_services:
+  - name: postgres
+    chart: bitnami/postgresql-ha
+    values_file: postgres-ha-values.yml.j2
+    label_selectors:
+      - app.kubernetes.io/name=postgresql-ha
+    wait_for_pods: true
+    config:
+      # Authentication
+      user: duli_user
+      password: "{{ vault_postgres_password }}"
+      database: duli_db
+      port: 5432
+      # High Availability
+      replicas:
+        postgresql: 3  # 1 primary + 2 replicas
+        pgpool: 2      # Connection pooler replicas
+      # Image
+      image:
+        tag: "15-alpine"
+      # Storage
+      persistence:
+        enabled: true
+        size: 50Gi
+        storageClass: "{{ storage_class }}"
+
+  - name: redis
+    chart: bitnami/redis
+    values_file: redis-ha-values.yml.j2
+    label_selectors:
+      - app.kubernetes.io/name=redis
+    wait_for_pods: true
+    config:
+      # Authentication
+      password: "{{ vault_redis_password }}"
+      # High Availability
+      replicas:
+        master: 1      # Always 1 master
+        replica: 2     # Number of replica nodes
+        sentinel: 3    # Number of sentinel nodes (for failover)
+      # Image
+      image:
+        tag: "7-alpine"
+      # Storage
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: "{{ storage_class }}"
+
+  - name: rabbitmq
+    chart: bitnami/rabbitmq
+    values_file: rabbitmq-ha-values.yml.j2
+    label_selectors:
+      - app.kubernetes.io/name=rabbitmq
+    wait_for_pods: true
+    config:
+      # Authentication
+      user: duli
+      password: "{{ vault_rabbitmq_password }}"
+      # High Availability
+      replicas: 3  # Cluster nodes
+      # Image
+      image:
+        tag: "3.12-management-alpine"
+      # Storage
+      persistence:
+        enabled: true
+        size: 20Gi
+        storageClass: "{{ storage_class }}"
+
+# ============================================================================
+# APPLICATION SERVICES
+# ============================================================================
+application_services:
+  - name: backend
+    chart: "{{ helm_charts_dir }}/backend"
+    values_file: backend-values.yml.j2
+    label_selectors:
+      - app=backend
+    wait_for_pods: true
+    config:
+      replicas: 3
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "256Mi"
+        limits:
+          cpu: "1000m"
+          memory: "512Mi"
+      image:
+        tag: latest
+
+  - name: ai-service
+    chart: "{{ helm_charts_dir }}/ai-service"
+    values_file: ai-service-values.yml.j2
+    label_selectors:
+      - app=ai-service
+    wait_for_pods: true
+    config:
+      replicas: 2
+      resources:
+        requests:
+          cpu: "1000m"
+          memory: "1Gi"
+        limits:
+          cpu: "2000m"
+          memory: "2Gi"
+      image:
+        tag: latest
+
+  - name: scheduler
+    chart: "{{ helm_charts_dir }}/scheduler"
+    values_file: scheduler-values.yml.j2
+    label_selectors:
+      - app=scheduler
+    wait_for_pods: true
+    config:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+      image:
+        tag: latest

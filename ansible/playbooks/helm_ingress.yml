@@ -1,0 +1,13 @@
+---
+- name: Deploy ingress and finalize
+  hosts: localhost
+  connection: local
+  tasks:
+    - set_fact:
+        helm_values_dir: "{{ playbook_dir }}/../../helm/values"
+      run_once: true
+
+    - kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', helm_values_dir + '/ingress.yml.j2') | from_yaml_all }}"
+        namespace: duli

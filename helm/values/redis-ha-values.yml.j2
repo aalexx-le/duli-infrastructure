@@ -1,0 +1,68 @@
+# Bitnami Redis Configuration with Sentinel (HA)
+# This replaces the single-instance redis chart with a high-availability setup
+
+# Redis authentication
+auth:
+  enabled: true
+  password: "{{ service_config.password }}"
+  sentinel: false  # Sentinel doesn't use password
+
+# Architecture: master-slave with Sentinel
+architecture: replication  # Options: standalone, replication, sentinel
+
+# Replication configuration (master-slave)
+replica:
+  replicaCount: {{ service_config.replicas.replica }}  # Number of replica nodes
+  persistence:
+    enabled: {{ service_config.persistence.enabled }}
+    storageClass: "{{ service_config.persistence.storageClass }}"
+    size: {{ service_config.persistence.size }}
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Master configuration
+master:
+  persistence:
+    enabled: {{ service_config.persistence.enabled }}
+    storageClass: "{{ service_config.persistence.storageClass }}"
+    size: {{ service_config.persistence.size }}
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Sentinel configuration (for automatic failover)
+sentinel:
+  enabled: true
+  quorum: {{ (service_config.replicas.sentinel / 2) | int + 1 }}  # Minimum sentinels needed (majority)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    redis: 6379
+    sentinel: 26379
+
+# Metrics (optional, for monitoring)
+metrics:
+  enabled: false
+
+# Image configuration
+image:
+  tag: {{ service_config.image.tag }}
+

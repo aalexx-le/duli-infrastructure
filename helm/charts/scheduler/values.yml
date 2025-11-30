@@ -1,0 +1,29 @@
+replicaCount: 1
+
+image:
+  repository: n8nio/n8n
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5678
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+persistence:
+  enabled: true
+  storageClass: do-block-storage
+  size: 10Gi
+
+n8n:
+  host: scheduler.duli.local
+  protocol: https
+  port: 5678

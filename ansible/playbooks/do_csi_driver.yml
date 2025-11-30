@@ -1,0 +1,125 @@
+---
+- name: Install DigitalOcean CSI Driver
+  hosts: localhost
+  connection: local
+  vars:
+    kubeconfig_path: "{{ ansible_env.HOME }}/.kube/config"
+    control_plane_host: "{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}"
+    control_plane_user: "{{ hostvars[groups['kube_control_plane'][0]]['ansible_user'] | default('root') }}"
+    ssh_key: "{{ ansible_env.HOME }}/.ssh/duli_staging"
+    csi_manifests_dir: "/tmp/do-csi-driver"
+    csi_manifests:
+      - name: crds
+        file: "crds.yaml"
+      - name: driver
+        file: "driver.yaml"
+
+  tasks:
+    - name: Ensure kubeconfig directory exists
+      file:
+        path: "{{ kubeconfig_path | dirname }}"
+        state: directory
+        mode: '0700'
+
+    - name: Check if valid kubeconfig exists
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: default
+        name: kubernetes
+      register: kubeconfig_check
+      ignore_errors: true
+      run_once: true
+
+    - name: Copy kubeconfig from control plane
+      ansible.builtin.shell:
+        cmd: "scp -i {{ ssh_key }} -o StrictHostKeyChecking=no {{ control_plane_user }}@{{ control_plane_host }}:/etc/kubernetes/admin.conf {{ kubeconfig_path }}"
+      when: kubeconfig_check is failed
+      run_once: true
+
+    - name: Update kubeconfig server address
+      ansible.builtin.replace:
+        path: "{{ kubeconfig_path }}"
+        regexp: 'server: https://127\.0\.0\.1:6443'
+        replace: 'server: https://{{ control_plane_host }}:6443'
+      when: kubeconfig_check is failed
+      run_once: true
+
+    - name: Get Kubernetes version
+      kubernetes.core.k8s_info:
+        kind: Node
+        kubeconfig: "{{ kubeconfig_path }}"
+      register: k8s_nodes
+      run_once: true
+
+    - name: Extract Kubernetes minor version
+      ansible.builtin.set_fact:
+        k8s_minor_version: "{{ k8s_nodes.resources[0].status.nodeInfo.kubeletVersion | regex_search('v(\\d+\\.\\d+)', '\\1') | first }}"
+      run_once: true
+
+    - name: Use CSI driver version from group_vars
+      ansible.builtin.set_fact:
+        csi_version: "{{ csi_driver_version }}"
+      run_once: true
+
+    - name: Display Kubernetes and CSI versions
+      debug:
+        msg: |
+          Kubernetes version: {{ k8s_minor_version }}
+          CSI driver version: {{ csi_version }}
+      run_once: true
+
+    - name: Create CSI manifests directory
+      file:
+        path: "{{ csi_manifests_dir }}"
+        state: directory
+        mode: '0755'
+      run_once: true
+
+    - name: Download DigitalOcean CSI driver manifests
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/digitalocean/csi-digitalocean/master/deploy/kubernetes/releases/csi-digitalocean-{{ csi_version }}/{{ item.file }}"
+        dest: "{{ csi_manifests_dir }}/{{ item.file }}"
+        mode: '0644'
+      with_items: "{{ csi_manifests }}"
+      register: manifest_downloads
+      run_once: true
+
+    - name: Create Kubernetes secret for DigitalOcean API token
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: digitalocean-csi-secret
+            namespace: kube-system
+          type: Opaque
+          stringData:
+            access-token: "{{ vault_do_api_token }}"
+      no_log: true
+
+    - name: Apply DigitalOcean CSI driver manifests
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', csi_manifests_dir + '/' + item.file) | from_yaml_all }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+      with_items: "{{ csi_manifests }}"
+      when: manifest_downloads.changed
+      run_once: true
+
+    - name: Check if StorageClass exists
+      kubernetes.core.k8s_info:
+        kind: StorageClass
+        name: do-block-storage
+        kubeconfig: "{{ kubeconfig_path }}"
+      register: storageclass_result
+      retries: 5
+      delay: 5
+      until: storageclass_result.resources | length > 0
+      ignore_errors: true
+
+    - name: Report CSI Driver status
+      debug:
+        msg: |
+          CSI Driver Setup Complete.
+          StorageClass Status: {% if storageclass_result.resources | length > 0 %}✓ Ready{% else %}⚠ Installing (this may take a moment){% endif %}

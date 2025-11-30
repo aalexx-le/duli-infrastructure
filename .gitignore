@@ -1,0 +1,49 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ansible
+*.retry
+ansible/inventories/*/hosts
+!ansible/inventories/*/.gitkeep
+kubeconfig-*
+*.pem
+.vault_pass
+
+# Helm
+helm-charts/**/charts/
+helm-charts/**/*.tgz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets
+secrets/
+.ssh/
+!.ssh/*.pub
+*.key
+*.crt
+*.secret
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+logs/
+*.log

@@ -1,0 +1,61 @@
+# Bitnami RabbitMQ Configuration
+# This replaces the single-instance rabbitmq chart with a high-availability cluster
+
+# RabbitMQ authentication
+auth:
+  username: "{{ service_config.user }}"
+  password: "{{ service_config.password }}"
+  erlangCookie: "{{ service_config.password | b64encode }}"
+
+# Number of RabbitMQ replicas (for clustering)
+replicaCount: {{ service_config.replicas }}  # N-node cluster for HA
+
+# Persistence configuration
+persistence:
+  enabled: {{ service_config.persistence.enabled }}
+  storageClass: "{{ service_config.persistence.storageClass }}"
+  size: {{ service_config.persistence.size }}
+  accessModes:
+    - ReadWriteOnce
+
+# Resource limits
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    amqp: 5672
+    management: 15672
+    epmd: 4369
+    dist: 25672
+
+# Management UI
+management:
+  enabled: true
+  port: 15672
+
+# Metrics (optional, for monitoring)
+metrics:
+  enabled: false
+
+# Load balancer configuration (for external access if needed)
+# loadBalancer:
+#   enabled: false
+#   annotations: {}
+
+# Extra configuration
+extraConfiguration: |
+  # Custom RabbitMQ configuration
+  cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+  cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+  cluster_formation.k8s.address_type = hostname
+  cluster_formation.node_cleanup.interval = 30
+  cluster_formation.node_cleanup.only_log_warning = true
+
