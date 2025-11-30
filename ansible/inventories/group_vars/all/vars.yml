@@ -89,11 +89,13 @@ infrastructure_services:
         size: 10Gi
         storageClass: "{{ storage_class }}"
 
-  - name: rabbitmq
-    chart: rabbitmq-cluster-operator
-    label_selectors:
-      - app.kubernetes.io/name=rabbitmq-cluster-operator
-    wait_for_pods: true
+  # TODO: RabbitMQ Cluster Operator images are Bitnami commercial-only
+  # Need to use official RabbitMQ Operator or self-hosted image registry
+  # - name: rabbitmq
+  #   chart: rabbitmq-cluster-operator
+  #   label_selectors:
+  #     - app.kubernetes.io/name=rabbitmq-cluster-operator
+  #   wait_for_pods: true
 # ============================================================================
 # APPLICATION SERVICES
 # ============================================================================
