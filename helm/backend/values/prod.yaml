@@ -48,7 +48,7 @@ env:
   - name: LOG_LEVEL
     value: "info"
   - name: DATABASE_HOST
-    value: "postgres-rw.prod.svc.cluster.local"
+    value: "database-rw.prod.svc.cluster.local"
   - name: DATABASE_PORT
     value: "5432"
   - name: DATABASE_NAME

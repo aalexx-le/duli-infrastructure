@@ -12,6 +12,10 @@ spec:
   imageName: {{ .Values.cluster.imageName }}
   instances: {{ .Values.cluster.instances }}
   
+  # Reference to Secret containing superuser password
+  superuserSecret:
+    name: postgres-credentials
+  
   bootstrap:
     initdb:
       database: {{ .Values.cluster.bootstrap.initdb.database }}
@@ -28,7 +32,19 @@ spec:
 {{- end }}
   
   primaryUpdateStrategy: unsupervised
-  
+
+  # Managed services configuration
+  managed:
+    services:
+      additional:
+      - selectorType: rw
+        serviceTemplate:
+          metadata:
+            name: {{ .Values.cluster.name }}-rw-lb
+          spec:
+            type: LoadBalancer
+            externalTrafficPolicy: Cluster
+
   storage:
     size: {{ .Values.cluster.storage.size }}
     storageClass: {{ .Values.cluster.storage.storageClass }}

@@ -13,9 +13,9 @@ gitops_argocd_chart_version: "7.8.20"
 
 # Rancher (Multi-cluster Management)
 # Reference: https://github.com/rancher/rancher/releases
-# v2.10.0+ supports K8s 1.26-1.33
-gitops_rancher_version: "v2.10.0"
-gitops_rancher_chart_version: "2.10.0"
+# v2.13.0 is stable and supports K8s 1.26-1.33
+gitops_rancher_version: "v2.13.0"
+gitops_rancher_chart_version: "2.13.0"
 
 # Cert-Manager (TLS Certificate Management - required by Rancher)
 # Reference: https://github.com/cert-manager/cert-manager/releases

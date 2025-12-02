@@ -1,0 +1,35 @@
+# RabbitMQ Staging Configuration
+cluster:
+  # Cluster topology
+  replicas: 1
+  
+  # Image configuration
+  image: rabbitmq:4.1.3-management-alpine
+  imagePullPolicy: IfNotPresent
+  
+  # Storage configuration
+  storage:
+    storageClass: do-block-storage
+    size: 5Gi
+  
+  # Resource limits (reduced for staging)
+  # NOTE: RabbitMQ requires memory.requests == memory.limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  
+  # RabbitMQ configuration
+  rabbitmq:
+    additionalConfig: |
+      # Disk threshold (RabbitMQ 4.1+ syntax)
+      disk_free_limit.absolute = 500MB
+      # Memory threshold
+      vm_memory_high_watermark.relative = 0.6
+      # Channel limits
+      channel_max = 512
+      # Connection heartbeat
+      heartbeat = 60

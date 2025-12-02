@@ -51,7 +51,7 @@ env:
   - name: PYTHONUNBUFFERED
     value: "1"
   - name: DATABASE_HOST
-    value: "postgres-rw.staging.svc.cluster.local"
+    value: "database-rw.staging.svc.cluster.local"
   - name: DATABASE_PORT
     value: "5432"
   - name: DATABASE_NAME

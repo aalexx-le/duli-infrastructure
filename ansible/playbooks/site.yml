@@ -1,4 +1,5 @@
 ---
 - import_playbook: kubespray.yml
 - import_playbook: do_csi_driver.yml
+- import_playbook: do_cloud_controller_manager.yml
 - import_playbook: helm_infrastructure.yml

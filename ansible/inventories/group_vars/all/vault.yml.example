@@ -3,7 +3,7 @@
 # Copy to vault.yml and fill in your values, then encrypt with:
 # ansible-vault encrypt ansible/inventories/cluster/group_vars/all/vault.yml
 
-# DigitalOcean API Token (required for CSI driver)
+# DigitalOcean API Token (required for CSI driver and Cloud Controller Manager)
 # Get your token from: https://cloud.digitalocean.com/account/api/tokens
 vault_do_api_token: "your-digitalocean-api-token"
 
@@ -11,3 +11,6 @@ vault_do_api_token: "your-digitalocean-api-token"
 vault_postgres_password: "your-secure-postgres-password"
 vault_redis_password: "your-secure-redis-password"
 vault_rabbitmq_password: "your-secure-rabbitmq-password"
+
+# GitOps Tool passwords
+vault_rancher_bootstrap_password: "your-rancher-bootstrap-password"

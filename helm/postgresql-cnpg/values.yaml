@@ -7,7 +7,7 @@ operator:
 # PostgreSQL Cluster Configuration
 cluster:
   enabled: true
-  name: postgres
+  name: database
   
   # PostgreSQL version
   imageName: ghcr.io/cloudnative-pg/postgresql:17-standard-bookworm
@@ -20,8 +20,8 @@ cluster:
     initdb:
       database: duli_db
       owner: duli_user
-      postInitApplicationSQL:
-        - "ALTER USER duli_user WITH PASSWORD 'postgres_password';"
+      postInitApplicationSQL: []
+        # Password is set via Secret reference (see cluster-secret-ref below)
   
   # Monitoring and health checks
   monitoring:

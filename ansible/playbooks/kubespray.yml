@@ -25,7 +25,7 @@
 
 - name: Configure kubeconfig for local access
   hosts: localhost
-  gather_facts: false
+  gather_facts: true
   tasks:
     - name: Get kubeconfig from control plane
       ansible.builtin.slurp:

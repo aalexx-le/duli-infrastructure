@@ -1,0 +1,21 @@
+# PostgreSQL Production Configuration (CloudNativePG)
+cluster:
+  instances: 3  # High availability - 3 replicas
+  postgresql:
+    parameters:
+      # Production-grade memory settings
+      shared_buffers: "512MB"
+      effective_cache_size: "2GB"
+      work_mem: "32MB"
+      maintenance_work_mem: "256MB"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+  storage:
+    size: 50Gi
+  monitoring:
+    enabled: true
+    pgAdmin:
+      enabled: true
+  backup:
+    enabled: true
+    retention: "30d"

@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: ai-service
     app.kubernetes.io/component: application
     app.kubernetes.io/managed-by: argocd
-    environment: {{ environment }}
+    environment: "{{ target_env }}"
 spec:
   project: default
 
@@ -19,11 +19,11 @@ spec:
     helm:
       releaseName: ai-service
       valueFiles:
-        - ../../values/ai-service-values-{{ environment }}.yaml
+        - ../../values/ai-service-values-{{ target_env }}.yaml
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ environment }}
+    namespace: "{{ target_env }}"
 
   syncPolicy:
     syncOptions:
@@ -31,8 +31,7 @@ spec:
     automated:
       prune: true
       selfHeal: true
-      allow:
-        empty: false
+      allowEmpty: false
 
   # Ignore unknown Helm schema errors
   ignoreDifferences:

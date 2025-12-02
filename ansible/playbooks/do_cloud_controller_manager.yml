@@ -1,0 +1,126 @@
+---
+- name: Install DigitalOcean Cloud Controller Manager
+  hosts: localhost
+  connection: local
+  vars:
+    kubeconfig_path: "{{ ansible_env.HOME }}/.kube/config"
+    control_plane_host: "{{ hostvars[groups['kube_control_plane'][0]]['ansible_host'] }}"
+    control_plane_user: "{{ hostvars[groups['kube_control_plane'][0]]['ansible_user'] | default('root') }}"
+    ssh_key: "{{ playbook_dir }}/../../.ssh/duli"
+    ccm_manifest_url: "https://raw.githubusercontent.com/digitalocean/digitalocean-cloud-controller-manager/master/releases/digitalocean-cloud-controller-manager/{{ do_ccm_version }}.yml"
+    pod_wait_timeout: 600
+    pod_wait_retries: 10
+    pod_wait_delay: 15
+
+  tasks:
+    - name: Ensure kubeconfig directory exists
+      file:
+        path: "{{ kubeconfig_path | dirname }}"
+        state: directory
+        mode: '0700'
+
+    - name: Check if valid kubeconfig exists
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: default
+        name: kubernetes
+      register: kubeconfig_check
+      ignore_errors: true
+      run_once: true
+
+    - name: Copy kubeconfig from control plane
+      ansible.builtin.shell:
+        cmd: "scp -i {{ ssh_key }} -o StrictHostKeyChecking=no {{ control_plane_user }}@{{ control_plane_host }}:/etc/kubernetes/admin.conf {{ kubeconfig_path }}"
+      when: kubeconfig_check is failed
+      run_once: true
+
+    - name: Update kubeconfig server address
+      ansible.builtin.replace:
+        path: "{{ kubeconfig_path }}"
+        regexp: 'server: https://127\.0\.0\.1:6443'
+        replace: 'server: https://{{ control_plane_host }}:6443'
+      when: kubeconfig_check is failed
+      run_once: true
+
+    - name: Check if Cloud Controller Manager is already installed
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: kube-system
+        name: do-cloud-controller-manager
+        kubeconfig: "{{ kubeconfig_path }}"
+      register: ccm_check
+      run_once: true
+
+    - name: Download DigitalOcean Cloud Controller Manager manifest
+      ansible.builtin.get_url:
+        url: "{{ ccm_manifest_url }}"
+        dest: "/tmp/do-ccm-{{ do_ccm_version }}.yml"
+      run_once: true
+
+    - name: Create DigitalOcean API token secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: digitalocean
+            namespace: kube-system
+          type: Opaque
+          stringData:
+            access-token: "{{ vault_do_api_token }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+      when: ccm_check.resources | length == 0
+      no_log: true
+      run_once: true
+
+    - name: Read Cloud Controller Manager manifest
+      ansible.builtin.slurp:
+        src: "/tmp/do-ccm-{{ do_ccm_version }}.yml"
+      register: ccm_manifest
+      run_once: true
+
+    - name: Parse and patch CCM manifest with VPC configuration
+      set_fact:
+        ccm_manifests: "{{ (ccm_manifest['content'] | b64decode | from_yaml_all | list) }}"
+        ccm_env_vars:
+          - name: "DO_CLUSTER_VPC_ID"
+            value: "{{ do_cluster_vpc_id }}"
+      run_once: true
+
+    - name: Apply DigitalOcean Cloud Controller Manager manifest
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ item if item.kind != 'Deployment' else item | combine({'spec': {'template': {'spec': {'containers': [item.spec.template.spec.containers[0] | combine({'env': item.spec.template.spec.containers[0].env + ccm_env_vars}, recursive=True)]}}}}, recursive=True) }}"
+        kubeconfig: "{{ kubeconfig_path }}"
+      loop: "{{ ccm_manifests }}"
+      when: ccm_check.resources | length == 0
+      run_once: true
+      register: ccm_result
+      retries: 3
+      delay: 10
+      until: ccm_result is succeeded
+
+    - name: Wait for Cloud Controller Manager pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: kube-system
+        label_selectors:
+          - app=digitalocean-cloud-controller-manager
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+      run_once: true
+
+    - name: Report Cloud Controller Manager status
+      debug:
+        msg: |
+          DigitalOcean Cloud Controller Manager: ✓ Ready
+          LoadBalancer IP provisioning is now enabled for Services.
+          LoadBalancer IPs should appear within 1-2 minutes.
+      run_once: true

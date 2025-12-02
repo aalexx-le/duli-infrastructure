@@ -1,0 +1,38 @@
+# RabbitMQ Production Configuration
+cluster:
+  # Cluster topology
+  replicas: 3
+  
+  # Image configuration
+  image: rabbitmq:4.1.3-management-alpine
+  imagePullPolicy: IfNotPresent
+  
+  # Storage configuration
+  storage:
+    storageClass: do-block-storage
+    size: 50Gi
+  
+  # Resource limits (production-grade)
+  # NOTE: RabbitMQ requires memory.requests == memory.limits
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  
+  # RabbitMQ configuration
+  rabbitmq:
+    additionalConfig: |
+      # Disk threshold (RabbitMQ 4.1+ syntax)
+      disk_free_limit.absolute = 2GB
+      # Memory threshold
+      vm_memory_high_watermark.relative = 0.6
+      # Channel limits
+      channel_max = 2048
+      # Connection heartbeat
+      heartbeat = 60
+      # Production optimizations
+      channel_error_max = 500
+      num_acceptors.tcp = 64

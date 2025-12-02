@@ -11,7 +11,7 @@ data:
   N8N_PORT: "{{ .Values.n8n.port | quote }}"
   GENERIC_TIMEZONE: "UTC"
   # Database connection details (non-sensitive)
-  DATABASE_HOST: "postgres-rw.duli.svc.cluster.local"
+  DATABASE_HOST: "database-rw.duli.svc.cluster.local"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "{{ .Values.postgres.database }}"
   DATABASE_USER: "{{ .Values.postgres.user }}"

@@ -1,0 +1,29 @@
+# Redis Production Configuration
+master:
+  persistence:
+    size: 50Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+replica:
+  replicaCount: 2
+  persistence:
+    size: 50Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+sentinel:
+  enabled: true
+  quorum: 2
+  downAfterMilliseconds: 3000
+  failoverTimeout: 180000

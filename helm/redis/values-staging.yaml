@@ -1,0 +1,41 @@
+# Redis Staging Configuration
+
+# Authentication configuration
+auth:
+  enabled: true
+  sentinel: true
+  # Password is provided via existingSecret in Helm deployment
+  # existingSecret: redis-credentials
+  # existingSecretPasswordKey: password
+
+master:
+  persistence:
+    size: 5Gi
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+replica:
+  replicaCount: 1
+  persistence:
+    size: 5Gi
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+sentinel:
+  enabled: true
+  quorum: 1
+  downAfterMilliseconds: 5000
+  failoverTimeout: 180000
+  # Expose Redis to internet via LoadBalancer
+  service:
+    type: LoadBalancer

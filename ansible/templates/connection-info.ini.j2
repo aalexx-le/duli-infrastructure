@@ -1,0 +1,40 @@
+# Infrastructure Connection Information - {{ target_namespace | upper }} Environment
+# Generated: {{ ansible_date_time.iso8601 }}
+
+[postgresql]
+host = {{ postgres_host }}
+port = 5432
+username = {{ postgres_user }}
+password = {{ postgres_pass }}
+database = postgres
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgres_host }}:5432/postgres
+
+[redis]
+host = {{ redis_host }}
+port = 6379
+username = default
+password = (check redis-credentials secret if auth enabled)
+connection_url = redis://{{ redis_host }}:6379
+
+[rabbitmq]
+host = {{ rabbitmq_host }}
+port = 5672
+management_port = 15672
+username = {{ rabbitmq_user }}
+password = {{ rabbitmq_pass }}
+amqp_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{{ rabbitmq_host }}:5672/
+management_ui = http://{{ rabbitmq_host }}:15672
+
+[argocd]
+host = {{ argocd_host }}
+url = https://{{ argocd_host }}
+
+[rancher]
+host = {{ rancher_host }}
+url = https://{{ rancher_host }}
+
+[notes]
+# If any host shows '(pending)', the LoadBalancer IP is still being assigned
+# Run this playbook again to update the file with assigned IPs
+# Keep this file secure - it contains sensitive credentials
+# For production, consider using a secrets management solution

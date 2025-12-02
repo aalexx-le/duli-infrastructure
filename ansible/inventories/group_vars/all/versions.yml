@@ -21,4 +21,8 @@ etcd_version: "3.5.15"
 # Reference: https://github.com/digitalocean/csi-digitalocean/releases
 csi_driver_version: "v4.8.0"  # Compatible with K8s 1.33.x
 
+# DigitalOcean Cloud Controller Manager Version
+# Reference: https://github.com/digitalocean/digitalocean-cloud-controller-manager/releases
+do_ccm_version: "v0.1.64"  # Latest stable version for K8s 1.33.x
+
 # GitOps Tools Versions (see gitops-versions.yml)
