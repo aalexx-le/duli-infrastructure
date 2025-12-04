@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-instance-{{ target_env }}
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/aalexx-le/duli-infrastructure
+    targetRevision: main
+    path: helm/keycloak-instance
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-{{ target_env }}.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

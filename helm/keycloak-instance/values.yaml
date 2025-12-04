@@ -1,0 +1,10 @@
+keycloak:
+  instances: 1
+  hostname: auth.duli.ai
+  db:
+    vendor: postgres
+    host: postgres-db
+    secretName: keycloak-db-secret
+
+clientSecrets:
+  aiService: "change-me"

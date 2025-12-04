@@ -1,0 +1,20 @@
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  instances: {{ .Values.keycloak.instances }}
+  db:
+    vendor: {{ .Values.keycloak.db.vendor }}
+    host: {{ .Values.keycloak.db.host }}
+    usernameSecret:
+      name: {{ .Values.keycloak.db.secretName }}
+      key: username
+    passwordSecret:
+      name: {{ .Values.keycloak.db.secretName }}
+      key: password
+  http:
+    tlsSecret: keycloak-tls-secret
+  hostname:
+    hostname: {{ .Values.keycloak.hostname }}

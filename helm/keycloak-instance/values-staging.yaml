@@ -1,0 +1,5 @@
+keycloak:
+  hostname: auth.staging.duli.ai
+  db:
+    host: database-staging-rw.staging.svc.cluster.local
+    secretName: database-app

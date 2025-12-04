@@ -204,3 +204,14 @@ resource "local_file" "ansible_inventory" {
 
   depends_on = [module.kubernetes_cluster]
 }
+
+# Automatically write DigitalOcean configuration to Ansible group_vars
+# Updates VPC ID and other DO-specific settings
+resource "local_file" "ansible_digitalocean_vars" {
+  content = templatefile("${path.module}/templates/digitalocean.yml.tpl", {
+    vpc_id = module.networking.vpc_id
+  })
+  filename = "${path.module}/../ansible/inventories/group_vars/all/digitalocean.yml"
+
+  depends_on = [module.networking]
+}

@@ -1,0 +1,4 @@
+redis:
+  redisSecret:
+    name: redis-credentials
+    key: password

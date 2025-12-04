@@ -1,0 +1,240 @@
+---
+- name: Deploy infrastructure services
+  hosts: localhost
+  connection: local
+  vars:
+    helm_retries: 3
+    helm_retry_delay: 10
+    pod_wait_timeout: 10
+    pod_wait_retries: 10
+    pod_wait_delay: 15
+    # Map helm tool version variables
+    cert_manager_chart_version: "{{ helm_cert_manager_chart_version }}"
+    rancher_chart_version: "{{ helm_rancher_chart_version }}"
+  tasks:
+    - name: Set paths
+      set_fact:
+        helm_dir: "{{ playbook_dir }}/../../helm"
+      run_once: true
+
+    # Operators are now managed via ArgoCD (see bottom of file)
+
+    # Deploy infrastructure services to multiple namespaces
+    - name: Validate target_environment variable is provided
+      assert:
+        that:
+          - target_environment is defined
+          - target_environment | length > 0
+        fail_msg: "target_environment variable is required. Use: -e target_environment=staging or -e target_environment=prod"
+      run_once: true
+
+    - name: Set target namespace
+      set_fact:
+        target_namespace: "{{ target_environment }}"
+      run_once: true
+
+    # ============================================================================
+    # CREATE TARGET NAMESPACE
+    # ============================================================================
+
+    - name: "Create {{ target_namespace }} namespace"
+      kubernetes.core.k8s:
+        name: "{{ target_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+      run_once: true
+
+    # Secrets are now managed via Sealed Secrets (ArgoCD)
+
+    # Services (Postgres, Redis, RabbitMQ) are now managed via ArgoCD
+
+
+
+    # ============================================================================
+    # GITOPS TOOLS INSTALLATION
+    # ============================================================================
+
+
+
+    - name: Ensure required Helm repositories
+      block:
+        - name: Check if Helm repositories exist
+          command: helm repo list
+          register: helm_repos_argo
+          changed_when: false
+
+        - name: Add Argo Helm repository
+          command: helm repo add argo https://argoproj.github.io/argo-helm
+          when: "'argo' not in helm_repos_argo.stdout"
+          changed_when: "'argo' not in helm_repos_argo.stdout"
+
+        - name: Add Jetstack Helm repository (cert-manager)
+          command: helm repo add jetstack https://charts.jetstack.io
+          when: "'jetstack' not in helm_repos_argo.stdout"
+          changed_when: "'jetstack' not in helm_repos_argo.stdout"
+
+        - name: Add Rancher Helm repository
+          command: helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+          when: "'rancher-stable' not in helm_repos_argo.stdout"
+          changed_when: "'rancher-stable' not in helm_repos_argo.stdout"
+
+        - name: Update all Helm repositories
+          command: helm repo update
+          changed_when: false
+
+    - name: Install Cert-Manager
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        release_namespace: cert-manager
+        create_namespace: true
+        chart_version: "{{ cert_manager_chart_version }}"
+        values:
+          installCRDs: true
+      retries: "{{ helm_retries }}"
+      delay: "{{ helm_retry_delay }}"
+      until: cert_manager_result is succeeded
+      register: cert_manager_result
+
+    - name: Wait for Cert-Manager pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: cert-manager
+        label_selectors:
+          - app.kubernetes.io/name=cert-manager
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+
+    - name: Install Rancher
+      kubernetes.core.helm:
+        name: rancher
+        chart_ref: rancher-stable/rancher
+        release_namespace: cattle-system
+        create_namespace: true
+        chart_version: "{{ rancher_chart_version }}"
+        values:
+          hostname: "{{ rancher_hostname | default('rancher.local') }}"
+          bootstrapPassword: "{{ vault_rancher_bootstrap_password | default('admin') }}"
+          replicas: 3
+          service:
+            type: LoadBalancer
+      retries: "{{ helm_retries }}"
+      delay: "{{ helm_retry_delay }}"
+      until: rancher_result is succeeded
+      register: rancher_result
+
+    - name: Wait for Rancher pods to be ready
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: cattle-system
+        label_selectors:
+          - app=rancher
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_sleep: 5
+        wait_timeout: "{{ pod_wait_timeout }}"
+      retries: "{{ pod_wait_retries }}"
+      delay: "{{ pod_wait_delay }}"
+
+    # ============================================================================
+    # CONFIGURE ARGOCD WITH LOADBALANCER
+    # ============================================================================
+
+    - name: Patch ArgoCD server service to LoadBalancer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: argocd-server
+            namespace: argocd
+          spec:
+            type: LoadBalancer
+            selector:
+              app.kubernetes.io/name: argocd-server
+            ports:
+              - name: http
+                port: 80
+                targetPort: 8080
+                protocol: TCP
+              - name: https
+                port: 443
+                targetPort: 8080
+                protocol: TCP
+      register: argocd_lb_result
+      retries: 3
+      delay: 10
+      until: argocd_lb_result is succeeded
+      run_once: true
+
+    # ============================================================================
+    # ARGOCD APPLICATIONS
+    # ============================================================================
+
+    - name: Determine environment
+      set_fact:
+        current_environment: "{{ target_environment }}"
+      run_once: true
+
+    - name: Deploy ArgoCD Applications
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
+      vars:
+        target_env: "{{ current_environment }}"
+      loop:
+        - sealed-secrets-controller
+        - infrastructure-secrets
+        - cloudnative-pg-operator
+        - rabbitmq-operator
+        - keycloak-operator
+        - redis-operator
+        - redis-instance
+        - keycloak-instance
+        - backend
+        - ai-service
+        - scheduler
+      loop_control:
+        label: "{{ item }}-{{ current_environment }}"
+      retries: 3
+      delay: 5
+      until: argocd_apps_result is succeeded
+      register: argocd_apps_result
+
+    - name: Wait for ArgoCD Applications to sync
+      kubernetes.core.k8s_info:
+        kind: Application
+        namespace: argocd
+        name: "{{ item }}"
+        wait: true
+        wait_condition:
+          type: Synced
+          status: "True"
+        wait_sleep: 10
+        wait_timeout: 300
+      loop:
+        - sealed-secrets-controller
+        - infrastructure-secrets
+        - cloudnative-pg-operator
+        - rabbitmq-operator
+        - keycloak-operator
+        - redis-operator
+        - redis-instance
+        - keycloak-instance
+        - backend
+        - ai-service
+        - scheduler
+      loop_control:
+        label: "{{ item }}-{{ current_environment }}"
+      retries: 2
+      delay: 15

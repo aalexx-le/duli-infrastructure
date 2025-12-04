@@ -1,0 +1,13 @@
+redis:
+  name: redis-standalone
+  mode: Standalone # or Cluster, Replication
+  size: 1
+  kubernetesConfig:
+    image: redis:7.0.0
+    imagePullPolicy: IfNotPresent
+  storage:
+    size: 1Gi
+    storageClassName: standard
+  redisSecret:
+    name: ""
+    key: ""

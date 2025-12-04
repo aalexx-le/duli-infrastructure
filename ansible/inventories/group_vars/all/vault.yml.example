@@ -1,16 +1,30 @@
 ---
-# This file contains sensitive variables encrypted with Ansible Vault
-# Copy to vault.yml and fill in your values, then encrypt with:
-# ansible-vault encrypt ansible/inventories/cluster/group_vars/all/vault.yml
+# ============================================================================
+# ANSIBLE VAULT - SENSITIVE CREDENTIALS
+# ============================================================================
+# This file should be encrypted using Ansible Vault.
+#
+# To encrypt: ansible-vault encrypt vault.yml
+# To edit:    ansible-vault edit vault.yml
+# To decrypt: ansible-vault decrypt vault.yml
+#
+# IMPORTANT: Never commit unencrypted vault.yml to version control!
+#
+# Variable naming follows component-based structure:
+# - Credentials are referenced in:
+#   - do_csi_driver.yml (vault_do_api_token)
+#   - do_cloud_controller_manager.yml (vault_do_api_token)
+#   - helm_infrastructure.yml (application passwords)
 
-# DigitalOcean API Token (required for CSI driver and Cloud Controller Manager)
-# Get your token from: https://cloud.digitalocean.com/account/api/tokens
+# DigitalOcean API Token
+# Get from: https://cloud.digitalocean.com/account/api/tokens
 vault_do_api_token: "your-digitalocean-api-token"
 
-# Database passwords
+# Infrastructure Service Passwords
 vault_postgres_password: "your-secure-postgres-password"
 vault_redis_password: "your-secure-redis-password"
 vault_rabbitmq_password: "your-secure-rabbitmq-password"
 
-# GitOps Tool passwords
+# GitOps Tool Passwords
+vault_argocd_admin_password: "your-argocd-admin-password"
 vault_rancher_bootstrap_password: "your-rancher-bootstrap-password"

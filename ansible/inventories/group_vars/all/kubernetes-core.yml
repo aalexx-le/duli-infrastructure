@@ -1,0 +1,16 @@
+---
+# ============================================================================
+# KUBERNETES CORE VERSIONS
+# ============================================================================
+# Versions for core Kubernetes components deployed via kubespray.
+# These are consumed by the external kubespray playbook (kubespray/cluster.yml)
+
+# Kubespray Release
+# Reference: https://github.com/kubernetes-sigs/kubespray/releases
+# v2.29.0 deploys Kubernetes v1.33.5 by default
+kubespray_version: "2.29.0"
+kube_version: "1.33.5"
+
+# etcd Version
+# Reference: https://github.com/etcd-io/etcd/releases
+etcd_version: "3.5.15"

@@ -1,0 +1,23 @@
+apiVersion: redis.redis.opstreelabs.in/v1beta1
+kind: Redis
+metadata:
+  name: {{ .Values.redis.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  kubernetesConfig:
+    image: {{ .Values.redis.kubernetesConfig.image }}
+    imagePullPolicy: {{ .Values.redis.kubernetesConfig.imagePullPolicy }}
+    {{- if .Values.redis.redisSecret.name }}
+    redisSecret:
+      name: {{ .Values.redis.redisSecret.name }}
+      key: {{ .Values.redis.redisSecret.key | default "password" }}
+    {{- end }}
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: {{ .Values.redis.storage.storageClassName }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.redis.storage.size }}

@@ -1,0 +1,33 @@
+---
+# ============================================================================
+# KUBESPRAY RUNTIME CONFIGURATION
+# ============================================================================
+# Runtime settings consumed by kubespray playbook for cluster deployment.
+# These control download behavior, container runtime, and deployment options.
+
+# Download Configuration
+local_release_dir: /tmp/releases
+download_cache_dir: /tmp/kubespray_cache
+download_run_once: true
+download_localhost: false
+download_container: false
+
+# Container Runtime
+container_manager: "containerd"
+deploy_netchecker: false
+
+# etcd Deployment
+etcd_deployment_type: "kubeadm"
+
+# ArgoCD Deployment (managed by kubespray)
+# Reference: infrastructure-kubernetes/kubespray/roles/kubernetes-apps/argocd/
+argocd_enabled: true
+argocd_namespace: "argocd"
+argocd_version: "2.14.5"
+argocd_admin_password: "{{ vault_argocd_admin_password }}"
+
+# Security Configuration (commented - enable for production)
+# kube_encrypt_secret_data: true
+# kube_encryption_algorithm: "aescbc"
+# kube_encryption_resources:
+#   - secrets

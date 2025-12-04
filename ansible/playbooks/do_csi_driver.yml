@@ -58,7 +58,7 @@
 
     - name: Use CSI driver version from group_vars
       ansible.builtin.set_fact:
-        csi_version: "{{ csi_driver_version }}"
+        csi_version: "{{ do_csi_driver_version }}"
       run_once: true
 
     - name: Display Kubernetes and CSI versions
