@@ -1,0 +1,23 @@
+redis:
+  # Production: Higher replica count for better HA
+  size: 3 # 1 master + 2 replicas
+
+  # Storage class for DigitalOcean (production)
+  storage:
+    storageClassName: do-block-storage
+    size: 50Gi # Production storage size
+
+  kubernetesConfig:
+    # Production resource limits (higher than staging)
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+  # Redis authentication secret (managed by Sealed Secrets)
+  redisSecret:
+    name: redis-credentials
+    key: password

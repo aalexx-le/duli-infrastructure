@@ -1,13 +1,32 @@
 redis:
-  name: redis-standalone
-  mode: Standalone # or Cluster, Replication
-  size: 1
+  name: redis-replication
+  # Mode: Standalone, Cluster, or Replication
+  # Replication mode provides HA with master-replica setup (similar to old Sentinel)
+  mode: Replication
+  # Number of replicas (master + replicas = size)
+  size: 2 # 1 master + 1 replica
+
   kubernetesConfig:
     image: redis:7.0.0
     imagePullPolicy: IfNotPresent
+
+    # Resource limits (matching old Bitnami Redis setup)
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
+
   storage:
-    size: 1Gi
+    size: 5Gi # Increased from 1Gi to match old setup
     storageClassName: standard
+
+  # Service configuration for external access
+  service:
+    type: LoadBalancer # Expose Redis via LoadBalancer
+
   redisSecret:
     name: ""
     key: ""

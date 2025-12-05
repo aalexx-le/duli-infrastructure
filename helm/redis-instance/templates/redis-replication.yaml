@@ -1,10 +1,12 @@
-{{- if eq .Values.redis.mode "Standalone" }}
+{{- if eq .Values.redis.mode "Replication" }}
 apiVersion: redis.redis.opstreelabs.in/v1beta2
-kind: Redis
+kind: RedisReplication
 metadata:
   name: {{ .Values.redis.name }}
   namespace: {{ .Release.Namespace }}
 spec:
+  clusterSize: {{ .Values.redis.size }}
+  
   kubernetesConfig:
     image: {{ .Values.redis.kubernetesConfig.image }}
     imagePullPolicy: {{ .Values.redis.kubernetesConfig.imagePullPolicy }}

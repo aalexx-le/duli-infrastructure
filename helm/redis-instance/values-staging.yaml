@@ -1,4 +1,9 @@
 redis:
+  # Storage class for DigitalOcean
+  storage:
+    storageClassName: do-block-storage
+
+  # Redis authentication secret (managed by Sealed Secrets)
   redisSecret:
     name: redis-credentials
     key: password
