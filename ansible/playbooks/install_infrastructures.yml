@@ -45,18 +45,6 @@
         state: present
       run_once: true
 
-    # ============================================================================
-    # SEALED SECRETS
-    # ============================================================================
-    # Sealed Secrets are now generated using a separate playbook.
-    # Run: ansible-playbook ansible/playbooks/generate_sealed_secrets.yml \
-    #        -i ansible/inventories/hosts.ini \
-    #        -e target_environment=staging \
-    #        --ask-vault-pass
-
-    # Services (Postgres, Redis, RabbitMQ) are now managed via ArgoCD
-
-
 
     # ============================================================================
     # GITOPS TOOLS INSTALLATION

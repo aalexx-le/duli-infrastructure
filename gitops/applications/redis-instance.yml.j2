@@ -16,17 +16,6 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: "{{ target_env }}"
-  ignoreDifferences:
-    - group: redis.redis.opstreelabs.in
-      kind: RedisReplication
-      jsonPointers:
-        - /spec/kubernetesConfig/service
-        - /spec/kubernetesConfig/updateStrategy
-        - /spec/livenessProbe
-        - /spec/readinessProbe
-        - /spec/storage/volumeClaimTemplate/metadata
-        - /spec/storage/volumeClaimTemplate/status
-        - /spec/storage/volumeMount
   syncPolicy:
     automated:
       prune: true
