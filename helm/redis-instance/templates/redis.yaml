@@ -1,5 +1,5 @@
 {{- if eq .Values.redis.mode "Standalone" }}
-apiVersion: redis.redis.opstreelabs.in/v1beta2
+apiVersion: redis.redis.opstreelabs.in/v1beta1
 kind: Redis
 metadata:
   name: {{ .Values.redis.name }}
