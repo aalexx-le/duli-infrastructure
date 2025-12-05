@@ -32,7 +32,6 @@ helm-charts/**/*.tgz
 .DS_Store
 
 # Secrets
-secrets/
 .ssh/
 !.ssh/*.pub
 *.key
