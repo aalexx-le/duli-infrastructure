@@ -46,49 +46,13 @@
       run_once: true
 
     # ============================================================================
-    # SEALED SECRETS GENERATION
+    # SEALED SECRETS
     # ============================================================================
-
-    - name: Generate Redis Sealed Secret
-      block:
-        - name: Create temporary secret manifest
-          copy:
-            content: |
-              apiVersion: v1
-              kind: Secret
-              metadata:
-                name: redis-credentials
-                namespace: {{ target_namespace }}
-              type: Opaque
-              stringData:
-                password: "{{ vault_redis_password }}"
-            dest: /tmp/redis-secret.yaml
-          no_log: true
-
-        - name: Generate sealed secret using kubeseal
-          shell: |
-            kubeseal --format=yaml \
-              --controller-name=sealed-secrets-controller \
-              --controller-namespace=sealed-secrets \
-              < /tmp/redis-secret.yaml > /tmp/redis-sealed-secret.yaml
-          register: kubeseal_result
-          changed_when: true
-
-        - name: Apply sealed secret
-          kubernetes.core.k8s:
-            state: present
-            src: /tmp/redis-sealed-secret.yaml
-
-        - name: Clean up temporary files
-          file:
-            path: "{{ item }}"
-            state: absent
-          loop:
-            - /tmp/redis-secret.yaml
-            - /tmp/redis-sealed-secret.yaml
-          no_log: true
-      when: vault_redis_password is defined
-      run_once: true
+    # Sealed Secrets are now generated using a separate playbook.
+    # Run: ansible-playbook ansible/playbooks/generate_sealed_secrets.yml \
+    #        -i ansible/inventories/hosts.ini \
+    #        -e target_environment=staging \
+    #        --ask-vault-pass
 
     # Services (Postgres, Redis, RabbitMQ) are now managed via ArgoCD
 
