@@ -6,10 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    # Official Keycloak Operator Manifests
-    repoURL: https://github.com/keycloak/keycloak-k8s-resources
-    targetRevision: 24.0.4
-    path: kubernetes
+    repoURL: https://github.com/aalexx-le/duli-infrastructure
+    targetRevision: main
+    path: helm/keycloak-operator
   destination:
     server: https://kubernetes.default.svc
     namespace: keycloak-system
