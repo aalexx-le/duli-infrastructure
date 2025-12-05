@@ -28,13 +28,6 @@ spec:
       type: {{ .Values.redis.service.type }}
       {{- end }}
     {{- end }}
-    livenessProbe:
-      exec:
-        command:
-          - redis-cli
-          - ping
-      initialDelaySeconds: 15
-      periodSeconds: 5
   
   storage:
     volumeClaimTemplate:
@@ -48,5 +41,3 @@ spec:
           requests:
             storage: {{ .Values.redis.storage.size }}
 {{- end }}
-
-```
