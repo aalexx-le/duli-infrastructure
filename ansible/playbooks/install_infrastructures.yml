@@ -1,5 +1,5 @@
 ---
-- name: Deploy infrastructure services
+- name: Deploy core infrastructure
   hosts: localhost
   connection: local
   vars:
@@ -8,18 +8,9 @@
     pod_wait_timeout: 10
     pod_wait_retries: 10
     pod_wait_delay: 15
-    # Map helm tool version variables
     cert_manager_chart_version: "{{ helm_cert_manager_chart_version }}"
     rancher_chart_version: "{{ helm_rancher_chart_version }}"
   tasks:
-    - name: Set paths
-      set_fact:
-        helm_dir: "{{ playbook_dir }}/../../helm"
-      run_once: true
-
-    # Operators are now managed via ArgoCD (see bottom of file)
-
-    # Deploy infrastructure services to multiple namespaces
     - name: Validate target_environment variable is provided
       assert:
         that:
@@ -45,12 +36,9 @@
         state: present
       run_once: true
 
-
     # ============================================================================
     # GITOPS TOOLS INSTALLATION
     # ============================================================================
-
-
 
     - name: Ensure required Helm repositories
       block:
@@ -173,7 +161,7 @@
       run_once: true
 
     # ============================================================================
-    # ARGOCD APPLICATIONS
+    # ARGOCD APPLICATIONS - Core Infrastructure
     # ============================================================================
 
     - name: Determine environment
@@ -181,7 +169,7 @@
         current_environment: "{{ target_environment }}"
       run_once: true
 
-    - name: Deploy ArgoCD Applications
+    - name: Deploy ArgoCD Applications (Core Infrastructure)
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
@@ -189,16 +177,10 @@
         target_env: "{{ current_environment }}"
       loop:
         - sealed-secrets-controller
-        - infrastructure-secrets
         - cloudnative-pg-operator
         - rabbitmq-operator
         - keycloak-operator
         - redis-operator
-        - redis-instance
-        - keycloak-instance
-        - backend
-        - ai-service
-        - scheduler
       loop_control:
         label: "{{ item }}-{{ current_environment }}"
       retries: 3
@@ -219,16 +201,10 @@
         wait_timeout: 300
       loop:
         - sealed-secrets-controller
-        - infrastructure-secrets
         - cloudnative-pg-operator
         - rabbitmq-operator
         - keycloak-operator
         - redis-operator
-        - redis-instance
-        - keycloak-instance
-        - backend
-        - ai-service
-        - scheduler
       loop_control:
         label: "{{ item }}-{{ current_environment }}"
       retries: 2

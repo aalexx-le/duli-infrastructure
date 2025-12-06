@@ -1,0 +1,94 @@
+---
+- name: Deploy applications
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Validate target_environment variable is provided
+      assert:
+        that:
+          - target_environment is defined
+          - target_environment | length > 0
+        fail_msg: "target_environment variable is required. Use: -e target_environment=staging or -e target_environment=prod"
+      run_once: true
+
+    - name: Set target namespace
+      set_fact:
+        target_namespace: "{{ target_environment }}"
+      run_once: true
+
+    - name: Determine environment
+      set_fact:
+        current_environment: "{{ target_environment }}"
+      run_once: true
+
+    # ============================================================================
+    # VERIFY PREREQUISITES
+    # ============================================================================
+
+    - name: Verify sealed-secrets controller is running
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: kube-system
+        label_selectors:
+          - app.kubernetes.io/name=sealed-secrets
+      register: sealed_secrets_pods
+      failed_when: sealed_secrets_pods.resources | length == 0
+
+    - name: Verify sealed secret files exist
+      stat:
+        path: "{{ playbook_dir }}/../../helm/secrets/templates/{{ item }}-sealed-secret-{{ target_environment }}.yaml"
+      register: sealed_secret_files
+      loop:
+        - redis
+        - postgres
+        - rabbitmq
+      failed_when: not sealed_secret_files.stat.exists
+
+
+    # ============================================================================
+    # ARGOCD APPLICATIONS
+    # ============================================================================
+
+    - name: Deploy ArgoCD Applications
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
+      vars:
+        target_env: "{{ current_environment }}"
+      loop:
+        - infrastructure-secrets
+        - redis-instance
+        - keycloak-instance
+        - backend
+        - ai-service
+        - scheduler
+      loop_control:
+        label: "{{ item }}-{{ current_environment }}"
+      retries: 3
+      delay: 5
+      until: argocd_apps_result is succeeded
+      register: argocd_apps_result
+
+    - name: Wait for ArgoCD Applications to sync
+      kubernetes.core.k8s_info:
+        kind: Application
+        namespace: argocd
+        name: "{{ item }}-{{ current_environment }}"
+        wait: true
+        wait_condition:
+          type: Synced
+          status: "True"
+        wait_sleep: 10
+        wait_timeout: 300
+      loop:
+        - infrastructure-secrets
+        - redis-instance
+        - keycloak-instance
+        - backend
+        - ai-service
+        - scheduler
+      loop_control:
+        label: "{{ item }}-{{ current_environment }}"
+      retries: 2
+      delay: 15
+      ignore_errors: true

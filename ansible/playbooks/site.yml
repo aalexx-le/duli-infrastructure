@@ -1,7 +1,18 @@
 ---
+# Deploy Kubernetes cluster and core infrastructure
 - import_playbook: kubespray.yml
 - import_playbook: do_csi_driver.yml
 - import_playbook: do_cloud_controller_manager.yml
+
+# Deploy core infrastructure (Cert-Manager, Rancher, ArgoCD, sealed-secrets controller, operators)
 - import_playbook: install_infrastructures.yml
+
+# Generate sealed secrets (requires sealed-secrets controller)
 - import_playbook: generate_sealed_secrets.yml
+
+# Deploy applications with secret dependencies
+- import_playbook: deploy_applications.yml
+
+# Export connection information
 - import_playbook: export_connection.yml
+
