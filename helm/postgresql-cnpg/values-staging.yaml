@@ -1,6 +1,10 @@
 # PostgreSQL Staging Configuration (CloudNativePG)
 cluster:
-  instances: 1 
+  instances: 1
+  # Service configuration - use NodePort for staging (accessible from anywhere)
+  service:
+    type: NodePort
+    externalTrafficPolicy: Cluster  # Allows access from local machine via any node IP
   postgresql:
     parameters:
       shared_buffers: "64MB"

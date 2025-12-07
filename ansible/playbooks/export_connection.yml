@@ -19,7 +19,7 @@
     - name: "Get PostgreSQL service details from {{ target_namespace }} namespace"
       kubernetes.core.k8s_info:
         kind: Service
-        name: "database-{{ target_namespace }}-rw"
+        name: "database-rw-lb"
         namespace: "{{ target_namespace }}"
       register: postgres_service
       retries: 3
@@ -29,7 +29,7 @@
     - name: "Get Redis service details from {{ target_namespace }} namespace"
       kubernetes.core.k8s_info:
         kind: Service
-        name: "cache"
+        name: "redis-replication-additional"
         namespace: "{{ target_namespace }}"
       register: redis_service
       retries: 3
@@ -39,9 +39,19 @@
     - name: "Get RabbitMQ service details from {{ target_namespace }} namespace"
       kubernetes.core.k8s_info:
         kind: Service
-        name: "queue-{{ target_namespace }}"
+        name: "queue"
         namespace: "{{ target_namespace }}"
       register: rabbitmq_service
+      retries: 3
+      delay: 10
+      run_once: true
+
+    - name: "Get Keycloak service details from keycloak-system namespace"
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: "keycloak-instance-{{ target_environment }}-lb"
+        namespace: "keycloak-system"
+      register: keycloak_service
       retries: 3
       delay: 10
       run_once: true
@@ -68,30 +78,66 @@
       until: rabbitmq_secret.resources | length > 0
       run_once: true
 
-    - name: Get ArgoCD LoadBalancer IP
+    - name: Get ArgoCD service
       kubernetes.core.k8s_info:
         kind: Service
         name: argocd-server
         namespace: argocd
       register: argocd_svc
+      retries: 3
+      delay: 5
+      run_once: true
 
-    - name: Get Rancher LoadBalancer IP
+    - name: Get Rancher service
       kubernetes.core.k8s_info:
         kind: Service
         name: rancher
         namespace: cattle-system
       register: rancher_svc
+      retries: 3
+      delay: 5
+      run_once: true
 
-    - name: Set connection info variables
+    - name: "Determine service access method (LoadBalancer vs NodePort)"
       set_fact:
-        postgres_host: "{{ postgres_service.resources[0].status.loadBalancer.ingress[0].ip if (postgres_service.resources | length > 0 and postgres_service.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
-        postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode }}"
-        postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode }}"
-        redis_host: "{{ redis_service.resources[0].status.loadBalancer.ingress[0].ip if (redis_service.resources | length > 0 and redis_service.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
-        rabbitmq_host: "{{ rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip if (rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
+        # Helper macro to get service host based on type (LoadBalancer or NodePort)
+        postgres_service_type: "{{ postgres_service.resources[0].spec.type if (postgres_service.resources | length > 0) else 'Unknown' }}"
+        redis_service_type: "{{ redis_service.resources[0].spec.type if (redis_service.resources | length > 0) else 'Unknown' }}"
+        rabbitmq_service_type: "{{ rabbitmq_service.resources[0].spec.type if (rabbitmq_service.resources | length > 0) else 'Unknown' }}"
+        keycloak_service_type: "{{ keycloak_service.resources[0].spec.type if (keycloak_service.resources | length > 0) else 'Unknown' }}"
+        argocd_service_type: "{{ argocd_svc.resources[0].spec.type if (argocd_svc.resources | length > 0) else 'Unknown' }}"
+        rancher_service_type: "{{ rancher_svc.resources[0].spec.type if (rancher_svc.resources | length > 0) else 'Unknown' }}"
+      run_once: true
+
+    - name: Set connection info variables (handles both LoadBalancer and NodePort)
+      set_fact:
+        # PostgreSQL: Extract host from LoadBalancer.ingress[0].ip or use NodePort info
+        postgres_host: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'LoadBalancer' and postgres_service.resources[0].status.loadBalancer.ingress %}{{ postgres_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ (postgres_service.resources[0].status.loadBalancer.ingress[0].ip if postgres_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
+        postgres_port: "{{ postgres_service.resources[0].spec.ports[0].port if (postgres_service.resources | length > 0) else '5432' }}"
+        postgres_nodeport: "{{ postgres_service.resources[0].spec.ports[0].nodePort if (postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort') else '' }}"
+        
+        # Redis: Extract host and port
+        redis_host: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'LoadBalancer' and redis_service.resources[0].status.loadBalancer.ingress %}{{ redis_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ (redis_service.resources[0].status.loadBalancer.ingress[0].ip if redis_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
+        redis_port: "{{ redis_service.resources[0].spec.ports[0].port if (redis_service.resources | length > 0) else '6379' }}"
+        redis_nodeport: "{{ redis_service.resources[0].spec.ports[0].nodePort if (redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort') else '' }}"
+        
+        # RabbitMQ: Extract multiple ports
+        rabbitmq_host: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'LoadBalancer' and rabbitmq_service.resources[0].status.loadBalancer.ingress %}{{ rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ (rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip if rabbitmq_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
+        rabbitmq_port: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='port') | first | default('5672') }}"
+        rabbitmq_mgmt_port: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'management') | map(attribute='port') | first | default('15672') }}"
+        rabbitmq_nodeport: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}"
         rabbitmq_user: "{{ rabbitmq_secret.resources[0].data.username | b64decode }}"
         rabbitmq_pass: "{{ rabbitmq_secret.resources[0].data.password | b64decode }}"
+        
+        # Keycloak
+        keycloak_host: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'LoadBalancer' and keycloak_service.resources[0].status.loadBalancer.ingress %}{{ keycloak_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ (keycloak_service.resources[0].status.loadBalancer.ingress[0].ip if keycloak_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
+        keycloak_port: "{{ keycloak_service.resources[0].spec.ports[0].port if (keycloak_service.resources | length > 0) else '8080' }}"
+        keycloak_nodeport: "{{ keycloak_service.resources[0].spec.ports[0].nodePort if (keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort') else '' }}"
+        
+        # ArgoCD
         argocd_host: "{{ argocd_svc.resources[0].status.loadBalancer.ingress[0].ip if (argocd_svc.resources | length > 0 and argocd_svc.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
+        
+        # Rancher
         rancher_host: "{{ rancher_svc.resources[0].status.loadBalancer.ingress[0].ip if (rancher_svc.resources | length > 0 and rancher_svc.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
       run_once: true
 

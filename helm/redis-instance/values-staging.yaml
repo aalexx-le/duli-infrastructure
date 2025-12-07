@@ -1,9 +1,7 @@
-redis:
-  # Storage class for DigitalOcean
-  storage:
-    storageClassName: do-block-storage
+# Redis Instance Staging Configuration
+# Overrides for staging environment
 
-  # Redis authentication secret (managed by Sealed Secrets)
-  redisSecret:
-    name: redis-credentials
-    key: password
+redis:
+  # Service configuration - use NodePort for staging (internal access)
+  service:
+    type: NodePort

@@ -36,6 +36,6 @@ sentinel:
   quorum: 1
   downAfterMilliseconds: 5000
   failoverTimeout: 180000
-  # Expose Redis to internet via LoadBalancer
+  # Service configuration - use NodePort for staging (internal access)
   service:
-    type: LoadBalancer
+    type: NodePort

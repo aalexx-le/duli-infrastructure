@@ -3,27 +3,37 @@
 
 [postgresql]
 host = {{ postgres_host }}
-port = 5432
-username = {{ postgres_user }}
+port = {{ postgres_port }}
+{% if postgres_nodeport %}nodeport = {{ postgres_nodeport }}
+{% endif %}username = {{ postgres_user }}
 password = {{ postgres_pass }}
-database = postgres
-connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgres_host }}:5432/postgres
+database = duli_db
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgres_host }}:{{ postgres_port }}/duli_db
 
 [redis]
 host = {{ redis_host }}
-port = 6379
-username = default
-password = (check redis-credentials secret if auth enabled)
-connection_url = redis://{{ redis_host }}:6379
+port = {{ redis_port }}
+{% if redis_nodeport %}nodeport = {{ redis_nodeport }}
+{% endif %}protocol = redis
+connection_url = redis://{{ redis_host }}:{{ redis_port }}
 
 [rabbitmq]
 host = {{ rabbitmq_host }}
-port = 5672
-management_port = 15672
-username = {{ rabbitmq_user }}
+port = {{ rabbitmq_port }}
+management_port = {{ rabbitmq_mgmt_port }}
+{% if rabbitmq_nodeport %}nodeport = {{ rabbitmq_nodeport }}
+{% endif %}username = {{ rabbitmq_user }}
 password = {{ rabbitmq_pass }}
-amqp_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{{ rabbitmq_host }}:5672/
-management_ui = http://{{ rabbitmq_host }}:15672
+amqp_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{{ rabbitmq_host }}:{{ rabbitmq_port }}/
+management_ui = http://{{ rabbitmq_host }}:{{ rabbitmq_mgmt_port }}
+
+[keycloak]
+host = {{ keycloak_host }}
+port = {{ keycloak_port }}
+{% if keycloak_nodeport %}nodeport = {{ keycloak_nodeport }}
+{% endif %}protocol = http
+admin_url = http://{{ keycloak_host }}:{{ keycloak_port }}/admin
+realm_url = http://{{ keycloak_host }}:{{ keycloak_port }}/realms
 
 [argocd]
 host = {{ argocd_host }}
@@ -32,9 +42,3 @@ url = https://{{ argocd_host }}
 [rancher]
 host = {{ rancher_host }}
 url = https://{{ rancher_host }}
-
-[notes]
-# If any host shows '(pending)', the LoadBalancer IP is still being assigned
-# Run this playbook again to update the file with assigned IPs
-# Keep this file secure - it contains sensitive credentials
-# For production, consider using a secrets management solution

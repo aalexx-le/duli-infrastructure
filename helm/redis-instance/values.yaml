@@ -24,8 +24,9 @@ redis:
     storageClassName: standard
 
   # Service configuration for external access
+  # Use LoadBalancer for production, NodePort for staging
   service:
-    type: LoadBalancer # Expose Redis via LoadBalancer
+    type: LoadBalancer # Default: LoadBalancer (override to NodePort in values-staging.yaml)
 
   redisSecret:
     name: ""

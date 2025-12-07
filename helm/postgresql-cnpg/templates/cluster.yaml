@@ -42,8 +42,8 @@ spec:
           metadata:
             name: {{ .Values.cluster.name }}-rw-lb
           spec:
-            type: LoadBalancer
-            externalTrafficPolicy: Cluster
+            type: {{ .Values.cluster.service.type | default "LoadBalancer" }}
+            externalTrafficPolicy: {{ .Values.cluster.service.externalTrafficPolicy | default "Cluster" }}
 
   storage:
     size: {{ .Values.cluster.storage.size }}

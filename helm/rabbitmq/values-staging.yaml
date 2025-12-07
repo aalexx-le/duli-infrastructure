@@ -2,11 +2,15 @@
 cluster:
   # Cluster topology
   replicas: 1
-  
+
   # Image configuration
   image: rabbitmq:4.1.3-management-alpine
   imagePullPolicy: IfNotPresent
-  
+
+  # Service configuration - use NodePort for staging (internal access)
+  service:
+    type: NodePort
+
   # Storage configuration
   storage:
     storageClass: do-block-storage
