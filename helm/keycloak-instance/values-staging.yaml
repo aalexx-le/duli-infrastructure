@@ -19,3 +19,7 @@ service:
   port: 8080
   targetPort: 8080
   # Note: exposing on different port than production to avoid conflicts
+
+# Client secrets for staging
+clientSecrets:
+  aiService: "staging-ai-service-secret"

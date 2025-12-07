@@ -20,3 +20,8 @@ service:
   type: LoadBalancer
   port: 8443
   targetPort: 8443
+
+# Client secrets for realm import
+# These should be overridden with actual secrets via sealed-secrets or environment
+clientSecrets:
+  aiService: "changeme-ai-service-secret"
