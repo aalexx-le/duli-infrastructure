@@ -38,6 +38,7 @@ spec:
     services:
       additional:
       - selectorType: rw
+        updateStrategy: replace
         serviceTemplate:
           metadata:
             name: {{ .Values.cluster.name }}-rw-lb
