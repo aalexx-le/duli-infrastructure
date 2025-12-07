@@ -1,3 +1,4 @@
+
 keycloak:
   instances: 1
   hostname: auth.duli.ai
@@ -9,6 +10,3 @@ keycloak:
     enabled: true
     issuerName: letsencrypt-prod
     issuerKind: ClusterIssuer
-
-clientSecrets:
-  aiService: "change-me"
