@@ -2,29 +2,43 @@
 # ============================================================================
 # ANSIBLE VAULT - SENSITIVE CREDENTIALS
 # ============================================================================
-# This file should be encrypted using Ansible Vault.
+# 
+# Setup:
+#   1. cp vault.yml.example vault.yml
+#   2. Fill in your actual values
+#   3. ansible-vault encrypt vault.yml
 #
-# To encrypt: ansible-vault encrypt vault.yml
-# To edit:    ansible-vault edit vault.yml
-# To decrypt: ansible-vault decrypt vault.yml
+# Usage:
+#   - Edit: ansible-vault edit group_vars/all/vault.yml
+#   - Generate sealed secrets: 
+#     ansible-playbook playbooks/generate_sealed_secrets.yml -e target_environment=staging --ask-vault-pass
 #
-# IMPORTANT: Never commit unencrypted vault.yml to version control!
+# Security:
+#   - Never commit unencrypted vault.yml to Git
+#   - Use different passwords for staging vs production
+#   - Minimum 32 characters recommended
+#   - Generate strong passwords: openssl rand -base64 32
 #
-# Variable naming follows component-based structure:
-# - Credentials are referenced in:
-#   - do_csi_driver.yml (vault_do_api_token)
-#   - do_cloud_controller_manager.yml (vault_do_api_token)
-#   - helm_infrastructure.yml (application passwords)
+# ============================================================================
 
-# DigitalOcean API Token
-# Get from: https://cloud.digitalocean.com/account/api/tokens
-vault_do_api_token: "your-digitalocean-api-token"
+# Cloud Provider
+vault_do_api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-# Infrastructure Service Passwords
-vault_postgres_password: "your-secure-postgres-password"
-vault_redis_password: "your-secure-redis-password"
-vault_rabbitmq_password: "your-secure-rabbitmq-password"
+# Redis (Secret: redis-credentials)
+vault_redis_password: "change-me-to-secure-redis-password-min-32-chars"
 
-# GitOps Tool Passwords
-vault_argocd_admin_password: "your-argocd-admin-password"
-vault_rancher_bootstrap_password: "your-rancher-bootstrap-password"
+# PostgreSQL Superuser (Secret: postgres-credentials)
+# Used by CloudNativePG operator for cluster management
+vault_postgres_password: "change-me-to-secure-postgres-superuser-password-min-32-chars"
+
+# PostgreSQL Application User (Secret: database-app)
+# Used by applications (Keycloak, Backend, AI Service, Scheduler)
+vault_postgres_app_username: "duli_user"
+vault_postgres_app_password: "change-me-to-secure-app-db-password-min-32-chars"
+
+# RabbitMQ (Secret: rabbitmq-credentials)
+vault_rabbitmq_password: "change-me-to-secure-rabbitmq-password-min-32-chars"
+
+# GitOps Tools
+vault_argocd_admin_password: "change-me-to-secure-argocd-password"
+vault_rancher_bootstrap_password: "change-me-to-secure-rancher-password"

@@ -169,7 +169,7 @@
         current_environment: "{{ target_environment }}"
       run_once: true
 
-    - name: Deploy ArgoCD Applications (Core Infrastructure)
+    - name: Deploy ArgoCD Application of Infrastructure
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
@@ -177,6 +177,7 @@
         target_env: "{{ current_environment }}"
       loop:
         - sealed-secrets-controller
+        - cert-manager-issuers
         - cloudnative-pg-operator
         - rabbitmq-operator
         - keycloak-operator
@@ -201,6 +202,7 @@
         wait_timeout: 300
       loop:
         - sealed-secrets-controller
+        - cert-manager-issuers
         - cloudnative-pg-operator
         - rabbitmq-operator
         - keycloak-operator

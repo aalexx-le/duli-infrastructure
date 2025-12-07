@@ -3,3 +3,7 @@ keycloak:
   db:
     host: database-staging-rw.staging.svc.cluster.local
     secretName: database-app
+  tls:
+    enabled: true
+    issuerName: selfsigned-issuer
+    issuerKind: ClusterIssuer

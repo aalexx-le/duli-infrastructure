@@ -1,0 +1,19 @@
+{{- if .Values.keycloak.tls.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: keycloak-tls-secret
+  issuerRef:
+    name: {{ .Values.keycloak.tls.issuerName }}
+    kind: {{ .Values.keycloak.tls.issuerKind | default "ClusterIssuer" }}
+  dnsNames:
+    - {{ .Values.keycloak.hostname }}
+  {{- if .Values.keycloak.tls.additionalDnsNames }}
+  {{- range .Values.keycloak.tls.additionalDnsNames }}
+    - {{ . }}
+  {{- end }}
+  {{- end }}
+{{- end }}

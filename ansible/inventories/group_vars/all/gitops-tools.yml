@@ -1,19 +1,29 @@
 ---
 # ============================================================================
+# GITOPS TOOLS - CONFIGURATION
+# ============================================================================
+# Configuration for GitOps tools and ArgoCD applications
+
+# Git Repository for ArgoCD Applications
+# Used by: ArgoCD application templates (*.yml.j2)
+git_repo_url: "https://github.com/aalexx-le/duli-infrastructure.git"
+git_branch: "main"
+
+# ============================================================================
 # GITOPS TOOLS - HELM CHART VERSIONS
 # ============================================================================
 # Chart versions for GitOps tools deployed via Helm (not kubespray-managed).
-# All deployed by helm_infrastructure.yml playbook.
+# All deployed by install_infrastructures.yml playbook.
 #
 # NOTE: ArgoCD is now deployed by kubespray (see kubernetes-runtime.yml)
 # Only Cert-Manager and Rancher remain as Helm-deployed tools
 
 # Cert-Manager - Certificate Management
 # Reference: https://github.com/cert-manager/cert-manager/releases
-# Used by: helm_infrastructure.yml (line 12)
+# Used by: install_infrastructures.yml
 helm_cert_manager_chart_version: "1.16.0"  # App version: v1.16.0, K8s 1.27+
 
 # Rancher - Kubernetes Management Platform
 # Reference: https://github.com/rancher/rancher/releases
-# Used by: helm_infrastructure.yml (line 14)
+# Used by: install_infrastructures.yml
 helm_rancher_chart_version: "2.13.0"  # App version: v2.13.0, K8s 1.32+

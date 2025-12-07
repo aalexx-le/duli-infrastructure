@@ -5,6 +5,10 @@ keycloak:
     vendor: postgres
     host: postgres-db
     secretName: keycloak-db-secret
+  tls:
+    enabled: true
+    issuerName: letsencrypt-prod
+    issuerKind: ClusterIssuer
 
 clientSecrets:
   aiService: "change-me"
