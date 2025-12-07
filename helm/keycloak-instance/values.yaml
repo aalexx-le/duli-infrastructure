@@ -14,3 +14,9 @@ keycloak:
   proxy:
     mode: "forwarded"
     headers: "forwarded"
+
+# Service configuration - Default to LoadBalancer
+service:
+  type: LoadBalancer
+  port: 8443
+  targetPort: 8443

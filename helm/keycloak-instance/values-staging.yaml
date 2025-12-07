@@ -18,3 +18,4 @@ service:
   type: NodePort
   port: 8080
   targetPort: 8080
+  # Note: exposing on different port than production to avoid conflicts
