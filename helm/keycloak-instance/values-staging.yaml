@@ -1,10 +1,18 @@
-
 keycloak:
-  hostname: auth.staging.duli.ai
+  instances: 1
+  # Accessed via LoadBalancer IP - will be assigned by cloud provider
+  hostname: "keycloak-staging"
   db:
+    vendor: postgres
     host: database-staging-rw.staging.svc.cluster.local
     secretName: database-app
   tls:
     enabled: true
     issuerName: selfsigned-issuer
     issuerKind: ClusterIssuer
+
+# LoadBalancer service - provides external IP access
+service:
+  type: LoadBalancer
+  port: 8443
+  targetPort: 8443

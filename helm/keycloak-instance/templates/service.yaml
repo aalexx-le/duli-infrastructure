@@ -1,0 +1,33 @@
+# LoadBalancer Service for Keycloak - IP-Only Access
+# Access Keycloak at: https://<EXTERNAL-IP>:8443
+#
+# Get the LoadBalancer IP:
+#   kubectl get svc keycloak-instance-staging-lb -n keycloak-system
+#
+{{- if .Values.service }}
+{{- if eq .Values.service.type "LoadBalancer" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-lb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: keycloak-loadbalancer
+spec:
+  type: LoadBalancer
+  {{- if .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  ports:
+  - name: https
+    port: {{ .Values.service.port | default 8443 }}
+    targetPort: {{ .Values.service.targetPort | default 8443 }}
+    protocol: TCP
+  selector:
+    app: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: keycloak-operator
+{{- end }}
+{{- end }}

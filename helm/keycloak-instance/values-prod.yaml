@@ -1,27 +1,18 @@
-# GitOps Best Practice: Production Configuration
-# Database credentials are managed via Kubernetes Secrets, NOT in values files.
-# The Keycloak Operator expects a secret named 'database-app' in the same namespace.
-#
-# CRITICAL - MANUAL SETUP REQUIRED FOR PRODUCTION:
-# 1. Create the database-app secret in the keycloak-system namespace (prod cluster)
-# 2. Use a secure GitOps secret management solution:
-#    - Option A: Sealed Secrets (https://github.com/bitnami-labs/sealed-secrets)
-#    - Option B: External Secrets Operator (https://external-secrets.io/)
-#    - Option C: HashiCorp Vault with ArgoCD integration
-#    - Option D: AWS Secrets Manager / Azure Key Vault with external-secrets
-#
-# This approach ensures:
-#   - Plaintext credentials are NEVER stored in Git repositories
-#   - Secrets are encrypted at rest in the cluster
-#   - Compliance with security best practices (SOC2, ISO27001, etc.)
-#   - Automatic secret rotation and management
-#
 keycloak:
-  hostname: auth.duli.ai
+  instances: 3  # High availability - 3 replicas for production
+  # Accessed via LoadBalancer IP - will be assigned by cloud provider
+  hostname: "keycloak-prod"
   db:
-    host: database-prod-rw.prod.svc.cluster.local  # Update to your production database host
+    vendor: postgres
+    host: database-prod-rw.prod.svc.cluster.local
     secretName: database-app
   tls:
     enabled: true
     issuerName: letsencrypt-prod
     issuerKind: ClusterIssuer
+
+# LoadBalancer service - provides external IP access
+service:
+  type: LoadBalancer
+  port: 8443
+  targetPort: 8443
