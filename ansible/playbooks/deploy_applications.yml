@@ -57,6 +57,8 @@
         target_env: "{{ current_environment }}"
       loop:
         - infrastructure-secrets
+        - postgresql-instance
+        - rabbitmq-instance
         - redis-instance
         - keycloak-instance
         - backend
@@ -82,6 +84,8 @@
         wait_timeout: 300
       loop:
         - infrastructure-secrets
+        - postgresql-instance
+        - rabbitmq-instance
         - redis-instance
         - keycloak-instance
         - backend

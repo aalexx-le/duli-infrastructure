@@ -1,0 +1,25 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rabbitmq-instance-{{ target_env }}
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: {{ git_repo_url }}
+    targetRevision: {{ git_branch | default('main') }}
+    path: helm/rabbitmq
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-{{ target_env }}.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ target_env }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
