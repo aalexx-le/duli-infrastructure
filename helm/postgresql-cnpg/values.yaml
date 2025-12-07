@@ -20,7 +20,10 @@ cluster:
     initdb:
       database: duli_db
       owner: duli_user
-      postInitApplicationSQL: []
+      postInitApplicationSQL:
+        # Create Keycloak database
+        - CREATE DATABASE keycloak OWNER duli_user;
+        # Create other application databases as needed
         # Password is set via Secret reference (see cluster-secret-ref below)
   
   # Monitoring and health checks
