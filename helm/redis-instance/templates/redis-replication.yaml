@@ -7,15 +7,15 @@ metadata:
 spec:
   clusterSize: {{ .Values.redis.size }}
   
+  # Security context to fix volume permission issues
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+    runAsNonRoot: true
+  
   kubernetesConfig:
     image: {{ .Values.redis.kubernetesConfig.image }}
     imagePullPolicy: {{ .Values.redis.kubernetesConfig.imagePullPolicy }}
-    
-    # Security context to fix volume permission issues
-    podSecurityContext:
-      fsGroup: 1000
-      runAsUser: 1000
-      runAsNonRoot: true
     
     {{- if .Values.redis.kubernetesConfig.resources }}
     resources:
