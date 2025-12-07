@@ -4,8 +4,7 @@
 [postgresql]
 host = {{ postgres_host }}
 port = {{ postgres_port }}
-{% if postgres_nodeport %}nodeport = {{ postgres_nodeport }}
-{% endif %}username = {{ postgres_user }}
+username = {{ postgres_user }}
 password = {{ postgres_pass }}
 database = duli_db
 connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgres_host }}:{{ postgres_port }}/duli_db
@@ -13,16 +12,14 @@ connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgre
 [redis]
 host = {{ redis_host }}
 port = {{ redis_port }}
-{% if redis_nodeport %}nodeport = {{ redis_nodeport }}
-{% endif %}protocol = redis
+protocol = redis
 connection_url = redis://{{ redis_host }}:{{ redis_port }}
 
 [rabbitmq]
 host = {{ rabbitmq_host }}
 port = {{ rabbitmq_port }}
 management_port = {{ rabbitmq_mgmt_port }}
-{% if rabbitmq_nodeport %}nodeport = {{ rabbitmq_nodeport }}
-{% endif %}username = {{ rabbitmq_user }}
+username = {{ rabbitmq_user }}
 password = {{ rabbitmq_pass }}
 amqp_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{{ rabbitmq_host }}:{{ rabbitmq_port }}/
 management_ui = http://{{ rabbitmq_host }}:{{ rabbitmq_mgmt_port }}
@@ -30,15 +27,16 @@ management_ui = http://{{ rabbitmq_host }}:{{ rabbitmq_mgmt_port }}
 [keycloak]
 host = {{ keycloak_host }}
 port = {{ keycloak_port }}
-{% if keycloak_nodeport %}nodeport = {{ keycloak_nodeport }}
-{% endif %}protocol = http
+protocol = http
 admin_url = http://{{ keycloak_host }}:{{ keycloak_port }}/admin
 realm_url = http://{{ keycloak_host }}:{{ keycloak_port }}/realms
 
 [argocd]
 host = {{ argocd_host }}
-url = https://{{ argocd_host }}
+port = {{ argocd_port }}
+url = https://{{ argocd_host }}:{{ argocd_port }}
 
 [rancher]
 host = {{ rancher_host }}
-url = https://{{ rancher_host }}
+port = {{ rancher_port }}
+url = https://{{ rancher_host }}:{{ rancher_port }}

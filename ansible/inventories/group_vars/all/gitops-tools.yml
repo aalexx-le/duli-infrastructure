@@ -27,3 +27,17 @@ helm_cert_manager_chart_version: "1.16.0"  # App version: v1.16.0, K8s 1.27+
 # Reference: https://github.com/rancher/rancher/releases
 # Used by: install_infrastructures.yml
 helm_rancher_chart_version: "2.13.0"  # App version: v2.13.0, K8s 1.32+
+
+# ============================================================================
+# GITOPS TOOLS - SERVICE TYPES
+# ============================================================================
+# Service type configuration for ArgoCD and Rancher
+# Can be overridden per-environment (see inventories/group_vars/<environment>/)
+
+# ArgoCD service type: LoadBalancer or NodePort
+# Default: LoadBalancer
+argocd_service_type: NodePort
+
+# Rancher service type: LoadBalancer or NodePort
+# Default: LoadBalancer
+rancher_service_type: NodePort

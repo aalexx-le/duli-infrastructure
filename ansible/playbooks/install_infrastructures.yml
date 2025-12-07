@@ -107,7 +107,7 @@
           bootstrapPassword: "{{ vault_rancher_bootstrap_password | default('admin') }}"
           replicas: 3
           service:
-            type: LoadBalancer
+            type: "{{ rancher_service_type | default('LoadBalancer') }}"
       retries: "{{ helm_retries }}"
       delay: "{{ helm_retry_delay }}"
       until: rancher_result is succeeded
@@ -129,12 +129,12 @@
       delay: "{{ pod_wait_delay }}"
 
     # ============================================================================
-    # CONFIGURE ARGOCD WITH LOADBALANCER
+    # CONFIGURE ARGOCD SERVICE TYPE
     # ============================================================================
 
-    - name: Patch ArgoCD server service to LoadBalancer
+    - name: Configure ArgoCD server service
       kubernetes.core.k8s:
-        state: present
+        state: patched
         definition:
           apiVersion: v1
           kind: Service
@@ -142,7 +142,7 @@
             name: argocd-server
             namespace: argocd
           spec:
-            type: LoadBalancer
+            type: "{{ argocd_service_type | default('LoadBalancer') }}"
             selector:
               app.kubernetes.io/name: argocd-server
             ports:

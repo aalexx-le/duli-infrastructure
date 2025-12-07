@@ -49,7 +49,7 @@
     - name: "Get Keycloak service details from keycloak-system namespace"
       kubernetes.core.k8s_info:
         kind: Service
-        name: "keycloak-instance-{{ target_environment }}-lb"
+        name: "keycloak-instance-{{ target_environment }}"
         namespace: "keycloak-system"
       register: keycloak_service
       retries: 3
@@ -98,6 +98,18 @@
       delay: 5
       run_once: true
 
+    - name: "Set node IP variable from inventory"
+      set_fact:
+        node_ip: "{{ hostvars[groups['all'] | select('search', 'worker') | first].ansible_host | default('<node-ip>') }}"
+      run_once: true
+
+    - name: "Extract PostgreSQL credentials from secret"
+      set_fact:
+        postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode }}"
+        postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode }}"
+      when: postgres_secret.resources | length > 0
+      run_once: true
+
     - name: "Determine service access method (LoadBalancer vs NodePort)"
       set_fact:
         # Helper macro to get service host based on type (LoadBalancer or NodePort)
@@ -111,34 +123,40 @@
 
     - name: Set connection info variables (handles both LoadBalancer and NodePort)
       set_fact:
-        # PostgreSQL: Extract host from LoadBalancer.ingress[0].ip or use NodePort info
-        postgres_host: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'LoadBalancer' and postgres_service.resources[0].status.loadBalancer.ingress %}{{ postgres_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ (postgres_service.resources[0].status.loadBalancer.ingress[0].ip if postgres_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
-        postgres_port: "{{ postgres_service.resources[0].spec.ports[0].port if (postgres_service.resources | length > 0) else '5432' }}"
+        # PostgreSQL: Extract host from LoadBalancer.ingress[0].ip or use node IP for NodePort
+        postgres_host: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'LoadBalancer' and postgres_service.resources[0].status.loadBalancer.ingress %}{{ postgres_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
+        postgres_port: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ postgres_service.resources[0].spec.ports[0].nodePort }}{% elif postgres_service.resources | length > 0 %}{{ postgres_service.resources[0].spec.ports[0].port }}{% else %}5432{% endif %}"
         postgres_nodeport: "{{ postgres_service.resources[0].spec.ports[0].nodePort if (postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort') else '' }}"
-        
+        postgres_user: "{{ postgres_user | default('postgres') }}"
+        postgres_pass: "{{ postgres_pass | default('') }}"
+
         # Redis: Extract host and port
-        redis_host: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'LoadBalancer' and redis_service.resources[0].status.loadBalancer.ingress %}{{ redis_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ (redis_service.resources[0].status.loadBalancer.ingress[0].ip if redis_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
-        redis_port: "{{ redis_service.resources[0].spec.ports[0].port if (redis_service.resources | length > 0) else '6379' }}"
+        redis_host: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'LoadBalancer' and redis_service.resources[0].status.loadBalancer.ingress %}{{ redis_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
+        redis_port: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ redis_service.resources[0].spec.ports[0].nodePort }}{% elif redis_service.resources | length > 0 %}{{ redis_service.resources[0].spec.ports[0].port }}{% else %}6379{% endif %}"
         redis_nodeport: "{{ redis_service.resources[0].spec.ports[0].nodePort if (redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort') else '' }}"
-        
+
         # RabbitMQ: Extract multiple ports
-        rabbitmq_host: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'LoadBalancer' and rabbitmq_service.resources[0].status.loadBalancer.ingress %}{{ rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ (rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip if rabbitmq_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
-        rabbitmq_port: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='port') | first | default('5672') }}"
+        rabbitmq_host: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'LoadBalancer' and rabbitmq_service.resources[0].status.loadBalancer.ingress %}{{ rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
+        rabbitmq_port: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}{% else %}{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='port') | first | default('5672') }}{% endif %}"
         rabbitmq_mgmt_port: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'management') | map(attribute='port') | first | default('15672') }}"
         rabbitmq_nodeport: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}"
-        rabbitmq_user: "{{ rabbitmq_secret.resources[0].data.username | b64decode }}"
-        rabbitmq_pass: "{{ rabbitmq_secret.resources[0].data.password | b64decode }}"
-        
+        rabbitmq_user: "{{ rabbitmq_user | default('guest') }}"
+        rabbitmq_pass: "{{ rabbitmq_pass | default('') }}"
+
         # Keycloak
-        keycloak_host: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'LoadBalancer' and keycloak_service.resources[0].status.loadBalancer.ingress %}{{ keycloak_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ (keycloak_service.resources[0].status.loadBalancer.ingress[0].ip if keycloak_service.resources[0].status.loadBalancer.ingress else 'localhost') }}{% else %}(pending){% endif %}"
-        keycloak_port: "{{ keycloak_service.resources[0].spec.ports[0].port if (keycloak_service.resources | length > 0) else '8080' }}"
+        keycloak_host: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'LoadBalancer' and keycloak_service.resources[0].status.loadBalancer.ingress %}{{ keycloak_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
+        keycloak_port: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ keycloak_service.resources[0].spec.ports[0].nodePort }}{% elif keycloak_service.resources | length > 0 %}{{ keycloak_service.resources[0].spec.ports[0].port }}{% else %}8080{% endif %}"
         keycloak_nodeport: "{{ keycloak_service.resources[0].spec.ports[0].nodePort if (keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort') else '' }}"
-        
-        # ArgoCD
-        argocd_host: "{{ argocd_svc.resources[0].status.loadBalancer.ingress[0].ip if (argocd_svc.resources | length > 0 and argocd_svc.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
-        
-        # Rancher
-        rancher_host: "{{ rancher_svc.resources[0].status.loadBalancer.ingress[0].ip if (rancher_svc.resources | length > 0 and rancher_svc.resources[0].status.loadBalancer.ingress) else '(pending)' }}"
+
+        # ArgoCD: Handle both LoadBalancer and NodePort
+        argocd_host: "{% if argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'LoadBalancer' and argocd_svc.resources[0].status.loadBalancer.ingress %}{{ argocd_svc.resources[0].status.loadBalancer.ingress[0].ip }}{% elif argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
+        argocd_port: "{% if argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'NodePort' %}{{ argocd_svc.resources[0].spec.ports[0].nodePort }}{% elif argocd_svc.resources | length > 0 %}{{ argocd_svc.resources[0].spec.ports[0].port }}{% else %}443{% endif %}"
+        argocd_nodeport: "{{ argocd_svc.resources[0].spec.ports[0].nodePort if (argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'NodePort') else '' }}"
+
+        # Rancher: Handle both LoadBalancer and NodePort
+        rancher_host: "{% if rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'LoadBalancer' and rancher_svc.resources[0].status.loadBalancer.ingress %}{{ rancher_svc.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
+        rancher_port: "{% if rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'NodePort' %}{{ rancher_svc.resources[0].spec.ports[0].nodePort }}{% elif rancher_svc.resources | length > 0 %}{{ rancher_svc.resources[0].spec.ports[0].port }}{% else %}443{% endif %}"
+        rancher_nodeport: "{{ rancher_svc.resources[0].spec.ports[0].nodePort if (rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'NodePort') else '' }}"
       run_once: true
 
     - name: "Write connection information to INI file"
