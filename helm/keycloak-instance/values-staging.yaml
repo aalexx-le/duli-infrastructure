@@ -7,9 +7,7 @@ keycloak:
     host: database-rw.staging.svc.cluster.local
     secretName: database-app
   tls:
-    enabled: true
-    issuerName: selfsigned-issuer
-    issuerKind: ClusterIssuer
+    enabled: false
   # Proxy configuration - replaces deprecated 'proxy' option
   proxy:
     mode: "forwarded"
@@ -18,5 +16,5 @@ keycloak:
 # LoadBalancer service - provides external IP access
 service:
   type: LoadBalancer
-  port: 8443
-  targetPort: 8443
+  port: 8080
+  targetPort: 8080

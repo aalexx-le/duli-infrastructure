@@ -15,7 +15,6 @@ spec:
       name: {{ .Values.keycloak.db.secretName }}
       key: password
   http:
-    tlsSecret: keycloak-tls-secret
     relativePath: /
   hostname:
     hostname: {{ .Values.keycloak.hostname }}
@@ -24,3 +23,5 @@ spec:
   additionalOptions:
   - name: proxy-headers
     value: {{ .Values.keycloak.proxy.headers | quote }}
+  - name: proxy-mode
+    value: {{ .Values.keycloak.proxy.mode | quote }}
