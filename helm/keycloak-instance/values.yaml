@@ -10,3 +10,7 @@ keycloak:
     enabled: true
     issuerName: letsencrypt-prod
     issuerKind: ClusterIssuer
+  # Proxy configuration - replaces deprecated 'proxy' option
+  proxy:
+    mode: "forwarded"
+    headers: "forwarded"

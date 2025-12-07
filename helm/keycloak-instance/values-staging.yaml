@@ -4,12 +4,16 @@ keycloak:
   hostname: "keycloak-staging"
   db:
     vendor: postgres
-    host: database-staging-rw.staging.svc.cluster.local
+    host: database-rw.staging.svc.cluster.local
     secretName: database-app
   tls:
     enabled: true
     issuerName: selfsigned-issuer
     issuerKind: ClusterIssuer
+  # Proxy configuration - replaces deprecated 'proxy' option
+  proxy:
+    mode: "forwarded"
+    headers: "forwarded"
 
 # LoadBalancer service - provides external IP access
 service:

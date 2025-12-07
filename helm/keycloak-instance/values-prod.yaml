@@ -4,12 +4,16 @@ keycloak:
   hostname: "keycloak-prod"
   db:
     vendor: postgres
-    host: database-prod-rw.prod.svc.cluster.local
+    host: database-rw.prod.svc.cluster.local
     secretName: database-app
   tls:
     enabled: true
     issuerName: letsencrypt-prod
     issuerKind: ClusterIssuer
+  # Proxy configuration - replaces deprecated 'proxy' option
+  proxy:
+    mode: "forwarded"
+    headers: "forwarded"
 
 # LoadBalancer service - provides external IP access
 service:
