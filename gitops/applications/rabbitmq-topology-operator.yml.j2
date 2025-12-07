@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: redis-operator
+  name: rabbitmq-topology-operator
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://ot-container-kit.github.io/helm-charts
-    targetRevision: 0.22.2
-    chart: redis-operator
+    repoURL: https://github.com/rabbitmq/messaging-topology-operator
+    targetRevision: v1.14.0
+    path: config/manager
   destination:
     server: https://kubernetes.default.svc
-    namespace: redis-operator-system
+    namespace: rabbitmq-system
   syncPolicy:
     automated:
       prune: true
