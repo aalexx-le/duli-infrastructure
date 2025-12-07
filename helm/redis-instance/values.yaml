@@ -23,9 +23,9 @@ redis:
     size: 5Gi # Increased from 1Gi to match old setup
     storageClassName: standard
 
-  # Service configuration for external access
+  # Service configuration for internal access only
   service:
-    type: LoadBalancer # Expose Redis via LoadBalancer
+    type: ClusterIP # Internal access only
 
   redisSecret:
     name: ""

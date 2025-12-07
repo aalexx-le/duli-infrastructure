@@ -31,7 +31,7 @@ spec:
     {{- if .Values.redis.service }}
     service:
       {{- if .Values.redis.service.type }}
-      type: {{ .Values.redis.service.type }}
+      serviceType: {{ .Values.redis.service.type }}
       {{- end }}
     {{- end }}
   
