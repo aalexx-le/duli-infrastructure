@@ -1,43 +1,155 @@
-# Infrastructure Connection Information - {{ target_namespace | upper }} Environment
+# ============================================================================
+# {{ target_namespace | upper }} ENVIRONMENT - CONNECTION INFORMATION
+# ============================================================================
 # Generated: {{ ansible_date_time.iso8601 }}
+#
+# RECOMMENDED: Use kubectl port-forward (zero setup required)
+# ADVANCED: Use Cloudflare Tunnel domains (requires WARP client)
+#
+# Security:
+#   - All passwords are stored in Kubernetes Secrets
+#   - Infrastructure services use ClusterIP (internal only)
+#   - kubectl port-forward uses Kubernetes API auth (secure tunnel)
+# ============================================================================
+
+[environment]
+namespace = {{ target_namespace }}
+domain_suffix = {% if target_namespace == 'prod' %}duli.one{% else %}{{ target_namespace }}.duli.one{% endif %}
+
+# ============================================================================
+# APPLICATION SERVICES (HTTPS via Cloudflare)
+# ============================================================================
+
+[backend]
+url = https://api.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+service = backend.{{ target_namespace }}.svc.cluster.local:3000
+kubectl_port_forward = kubectl port-forward -n {{ target_namespace }} svc/backend 3000:3000
+
+[ai-service]
+url = https://ai.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+service = ai-service.{{ target_namespace }}.svc.cluster.local:8000
+kubectl_port_forward = kubectl port-forward -n {{ target_namespace }} svc/ai-service 8000:8000
+
+[scheduler]
+url = https://n8n.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+service = scheduler.{{ target_namespace }}.svc.cluster.local:5678
+kubectl_port_forward = kubectl port-forward -n {{ target_namespace }} svc/scheduler 5678:5678
+
+# ============================================================================
+# INFRASTRUCTURE SERVICES (TCP via ingress-nginx pass-through)
+# ============================================================================
 
 [postgresql]
-host = {{ postgres_host }}
-port = {{ postgres_port }}
+# RECOMMENDED: kubectl port-forward (copy-paste this!)
+kubectl_port_forward = kubectl port-forward -n {{ target_namespace }} svc/database-rw 5432:5432
+# Then connect: psql -h localhost -p 5432 -U {{ postgres_user }}
+
+# Internal cluster access (for applications)
+service = database-rw.{{ target_namespace }}.svc.cluster.local:5432
+connection_url_internal = postgresql://{{ postgres_user }}:{{ postgres_pass }}@database-rw.{{ target_namespace }}.svc.cluster.local:5432/app
+
+# ADVANCED: Cloudflare Tunnel (requires WARP client)
+{% if target_namespace == 'staging' %}
+domain = db.staging.duli.one
+port = 5432
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.staging.duli.one:5432/app
+{% else %}
+domain = db.duli.one
+port = 5432
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.duli.one:5432/app
+{% endif %}
+
+# Credentials
 username = {{ postgres_user }}
 password = {{ postgres_pass }}
-database = duli_db
-connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgres_host }}:{{ postgres_port }}/duli_db
 
 [redis]
-host = {{ redis_host }}
-port = {{ redis_port }}
-protocol = redis
-password = {{ redis_password | default('') }}
-connection_url = {% if redis_password %}redis://:{{ redis_password }}@{{ redis_host }}:{{ redis_port }}{% else %}redis://{{ redis_host }}:{{ redis_port }}{% endif %}
+# External access via TCP pass-through
+{% if target_namespace == 'staging' %}
+domain = redis.staging.duli.one
+port = 6379
+{% else %}
+domain = redis.duli.one
+port = 6380
+{% endif %}
+# Internal cluster access
+service = redis-replication.{{ target_namespace }}.svc.cluster.local:6379
+# Local development
+kubectl_port_forward = kubectl port-forward -n {{ target_namespace }} svc/redis-replication 6379:6379
+# Credentials
+password = {{ redis_password }}
+# Connection URL (external)
+connection_url = redis://:{{ redis_password }}@{{ 'redis.staging.duli.one:6379' if target_namespace == 'staging' else 'redis.duli.one:6380' }}
+# Connection URL (internal - from within cluster)
+connection_url_internal = redis://:{{ redis_password }}@redis-replication.{{ target_namespace }}.svc.cluster.local:6379
 
 [rabbitmq]
-host = {{ rabbitmq_host }}
-port = {{ rabbitmq_port }}
-management_port = {{ rabbitmq_mgmt_port }}
+# AMQP - External access via TCP pass-through
+{% if target_namespace == 'staging' %}
+amqp_domain = mq.staging.duli.one
+amqp_port = 5672
+{% else %}
+amqp_domain = mq.duli.one
+amqp_port = 5673
+{% endif %}
+# Management UI - HTTPS via Ingress
+management_url = https://queue.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+# Internal cluster access
+service_amqp = queue.{{ target_namespace }}.svc.cluster.local:5672
+service_management = queue.{{ target_namespace }}.svc.cluster.local:15672
+# Local development
+kubectl_port_forward_amqp = kubectl port-forward -n {{ target_namespace }} svc/queue 5672:5672
+kubectl_port_forward_mgmt = kubectl port-forward -n {{ target_namespace }} svc/queue 15672:15672
+# Credentials
 username = {{ rabbitmq_user }}
 password = {{ rabbitmq_pass }}
-amqp_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{{ rabbitmq_host }}:{{ rabbitmq_port }}/
-management_ui = http://{{ rabbitmq_host }}:{{ rabbitmq_mgmt_port }}
+# Connection URL (external)
+connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{{ 'mq.staging.duli.one:5672' if target_namespace == 'staging' else 'mq.duli.one:5673' }}
+# Connection URL (internal - from within cluster)
+connection_url_internal = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@queue.{{ target_namespace }}.svc.cluster.local:5672
 
-[keycloak]
-host = {{ keycloak_host }}
-port = {{ keycloak_port }}
-protocol = http
-admin_url = http://{{ keycloak_host }}:{{ keycloak_port }}/admin
-realm_url = http://{{ keycloak_host }}:{{ keycloak_port }}/realms
+# ============================================================================
+# GITOPS TOOLS
+# ============================================================================
 
 [argocd]
-host = {{ argocd_host }}
-port = {{ argocd_port }}
-url = https://{{ argocd_host }}:{{ argocd_port }}
+url = https://argocd.duli.one
+service = argocd-server.argocd.svc.cluster.local:443
+kubectl_port_forward = kubectl port-forward -n argocd svc/argocd-server 8080:443
 
 [rancher]
-host = {{ rancher_host }}
-port = {{ rancher_port }}
-url = https://{{ rancher_host }}:{{ rancher_port }}
+url = https://rancher.duli.one
+service = rancher.cattle-system.svc.cluster.local:443
+kubectl_port_forward = kubectl port-forward -n cattle-system svc/rancher 8443:443
+
+[keycloak]
+url = https://auth.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+service = keycloak-instance-{{ target_namespace }}.keycloak-system.svc.cluster.local:8080
+kubectl_port_forward = kubectl port-forward -n keycloak-system svc/keycloak-instance-{{ target_namespace }} 8080:8080
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# 
+# External Access:
+#   - All services accessible via domain names through Cloudflare
+#   - Infrastructure services (PostgreSQL, Redis, RabbitMQ AMQP) use TCP pass-through
+#   - Application services and Management UIs use HTTPS with TLS certificates
+#
+# Internal Access (from within cluster):
+#   - Use <service-name>.<namespace>.svc.cluster.local
+#   - No external connectivity required
+#   - Faster and more secure
+#
+# Local Development:
+#   - Use kubectl port-forward commands
+#   - Creates secure tunnel from localhost to cluster
+#   - No need to expose services externally
+#
+# Security Best Practices:
+#   - Change default passwords in production
+#   - Use Kubernetes Secrets for credentials
+#   - Enable mTLS for service-to-service communication
+#   - Rotate credentials regularly
+#   - Use network policies to restrict traffic
+# ============================================================================

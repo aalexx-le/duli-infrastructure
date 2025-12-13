@@ -1,0 +1,34 @@
+---
+# RabbitMQ Management UI Ingress
+# Provides HTTPS access to RabbitMQ management console via domain
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rabbitmq-management
+  namespace: {{ .Values.namespace }}
+  annotations:
+    # Use nginx ingress controller
+    kubernetes.io/ingress.class: nginx
+    # TLS certificate from cert-manager
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | default "letsencrypt-prod" }}
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # Backend uses HTTP (not HTTPS)
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: rabbitmq-management-tls
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.cluster.name }}
+                port:
+                  number: 15672

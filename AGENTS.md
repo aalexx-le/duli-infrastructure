@@ -87,22 +87,34 @@ infrastructure-kubernetes/
 Main entry: `ansible/playbooks/site.yml` (orchestrates all phases)
 
 **Modular Playbooks:**
-- `kubespray.yml` - Kubernetes cluster provisioning
+- `kubespray.yml` - Kubernetes cluster provisioning (includes ingress-nginx)
 - `do_csi_driver.yml` - DigitalOcean Block Storage CSI driver installation
-- `helm_infrastructure.yml` - PostgreSQL HA, Redis HA, RabbitMQ HA, Cert-Manager, ArgoCD, Rancher, Application Secrets, and ArgoCD Application definitions
-- `helm_ingress.yml` - Ingress configuration
+- `do_cloud_controller_manager.yml` - DigitalOcean Cloud Controller Manager
+- `install_infrastructures.yml` - Cert-Manager, Rancher, ArgoCD config, operators, Cloudflare secret
+- `configure_cloudflare.yml` - Cloudflare DNS records and SSL/TLS settings
+- `generate_sealed_secrets.yml` - Sealed secrets generation
+- `deploy_applications.yml` - Application services deployment
+- `export_connection.yml` - Connection information export
 
 **Execution Order:**
-1. `kubespray.yml` - Creates Kubernetes cluster
+1. `kubespray.yml` - Creates Kubernetes cluster with ingress-nginx (LoadBalancer)
 2. `do_csi_driver.yml` - Installs DigitalOcean CSI driver (creates `do-block-storage` StorageClass)
-3. `helm_infrastructure.yml` - Deploys:
-   - PostgreSQL HA, Redis HA, RabbitMQ HA (infrastructure services)
-   - Cert-Manager (TLS certificate management)
-   - ArgoCD (GitOps continuous deployment)
+3. `do_cloud_controller_manager.yml` - Installs DigitalOcean CCM for LoadBalancer support
+4. `install_infrastructures.yml` - Deploys:
+   - Cert-Manager (TLS certificate management with Cloudflare DNS-01)
+   - Cloudflare API token secret (for DNS-01 challenge)
    - Rancher (multi-cluster management)
-   - Application Secrets (postgres-credentials, redis-credentials, rabbitmq-credentials)
-   - ArgoCD Applications (backend, ai-service, scheduler - automatically synced from Git)
-4. `helm_ingress.yml` - Deploys ingress + verification
+   - ArgoCD service configuration
+   - Infrastructure operators (CloudNativePG, Redis, RabbitMQ, Keycloak, Sealed Secrets)
+5. `configure_cloudflare.yml` - Configures Cloudflare:
+   - Gets LoadBalancer IP from ingress-nginx
+   - Creates A record for root domain
+   - Creates CNAME records for subdomains (api, ai, n8n, auth, argocd, rancher)
+   - Sets SSL mode to Full (Strict)
+   - Enables Always Use HTTPS, TLS 1.2+, Automatic HTTPS Rewrites
+6. `generate_sealed_secrets.yml` - Generates sealed secrets
+7. `deploy_applications.yml` - Deploys application services via ArgoCD
+8. `export_connection.yml` - Exports connection information
 
 Each playbook waits for resources to be Ready before importing the next.
 

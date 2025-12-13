@@ -97,3 +97,22 @@ securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
   runAsNonRoot: false
+
+# Ingress Configuration (ML workloads need longer timeouts)
+ingress:
+  enabled: true
+  className: nginx
+  host: "ai.duli.one"
+  path: /
+  pathType: Prefix
+  clusterIssuer: "letsencrypt-prod"
+  proxyBodySize: "500m"
+  proxyReadTimeout: "3600"
+  proxySendTimeout: "3600"
+  proxyConnectTimeout: "600"
+  enableCors: true
+  corsAllowOrigin: "https://duli.one,https://app.duli.one"
+  tls:
+    enabled: true
+    secretName: "duli-one-wildcard-tls"
+  annotations: {}

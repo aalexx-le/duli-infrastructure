@@ -14,9 +14,9 @@ cluster:
   image: rabbitmq:4.1.3-management-alpine
   imagePullPolicy: IfNotPresent
 
-  # Service configuration - expose to internet
+  # Service configuration - internal only (accessed via Ingress)
   service:
-    type: LoadBalancer
+    type: ClusterIP
 
   # Storage configuration
   storage:
@@ -44,3 +44,12 @@ cluster:
       channel_max = 2048
       # Connection heartbeat
       heartbeat = 60
+
+# Ingress configuration for Management UI
+ingress:
+  enabled: true
+  host: queue.duli.one
+  clusterIssuer: letsencrypt-prod
+
+# Namespace (set by ArgoCD/Helm)
+namespace: staging

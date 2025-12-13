@@ -1,0 +1,34 @@
+---
+# ============================================================================
+# WILDCARD CERTIFICATE FOR DULI.ONE
+# ============================================================================
+# Pre-provisioned wildcard certificate for all subdomains.
+# This certificate is shared across all Ingress resources.
+#
+# Alternative: Let each Ingress request its own certificate via annotations.
+# Wildcard approach is more efficient (single cert, single renewal).
+
+{{- if .Values.wildcardCertificate.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: duli-one-wildcard
+  namespace: {{ .Values.wildcardCertificate.namespace | default "cert-manager" }}
+spec:
+  secretName: duli-one-wildcard-tls
+  duration: 2160h    # 90 days
+  renewBefore: 720h  # 30 days before expiry
+  commonName: "duli.one"
+  dnsNames:
+  - "duli.one"
+  - "*.duli.one"
+  issuerRef:
+    name: {{ .Values.wildcardCertificate.issuer | default "letsencrypt-prod" }}
+    kind: ClusterIssuer
+  secretTemplate:
+    annotations:
+      # Allow copying this secret to other namespaces
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "staging,prod,argocd,keycloak"
+{{- end }}

@@ -10,6 +10,35 @@ git_repo_url: "https://github.com/aalexx-le/duli-infrastructure.git"
 git_branch: "main"
 
 # ============================================================================
+# DOMAIN CONFIGURATION
+# ============================================================================
+# Domain settings for duli.one with Cloudflare integration.
+# All services are exposed via ingress-nginx with TLS termination.
+
+# Base domain
+domain_base: "duli.one"
+
+# Subdomain assignments
+domain_api: "api.{{ domain_base }}"           # Backend API service
+domain_ai: "ai.{{ domain_base }}"             # AI service
+domain_scheduler: "n8n.{{ domain_base }}"     # n8n scheduler
+domain_auth: "auth.{{ domain_base }}"         # Keycloak authentication
+domain_argocd: "argocd.{{ domain_base }}"     # ArgoCD UI
+domain_rancher: "rancher.{{ domain_base }}"   # Rancher UI
+
+# TLS Configuration
+# ClusterIssuer to use for certificate generation
+# Options: letsencrypt-staging (testing), letsencrypt-prod (production)
+tls_cluster_issuer: "letsencrypt-prod"
+
+# Wildcard certificate secret name (shared across services)
+tls_wildcard_secret: "duli-one-wildcard-tls"
+
+# Cloudflare Configuration
+cloudflare_email: "admin@duli.one"
+# API token stored in vault: vault_cloudflare_api_token
+
+# ============================================================================
 # GITOPS TOOLS - HELM CHART VERSIONS
 # ============================================================================
 # Chart versions for GitOps tools deployed via Helm (not kubespray-managed).
@@ -31,13 +60,14 @@ helm_rancher_chart_version: "2.13.0"  # App version: v2.13.0, K8s 1.32+
 # ============================================================================
 # GITOPS TOOLS - SERVICE TYPES
 # ============================================================================
-# Service type configuration for ArgoCD and Rancher
-# Can be overridden per-environment (see inventories/group_vars/<environment>/)
+# Service type configuration for ArgoCD and Rancher.
+# With ingress-nginx enabled, services use ClusterIP and are accessed via Ingress.
 
-# ArgoCD service type: LoadBalancer or NodePort
-# Default: LoadBalancer
-argocd_service_type: NodePort
+# ArgoCD service type: ClusterIP (accessed via Ingress at argocd.duli.one)
+argocd_service_type: ClusterIP
 
-# Rancher service type: LoadBalancer or NodePort
-# Default: LoadBalancer
-rancher_service_type: NodePort
+# Rancher service type: ClusterIP (accessed via Ingress at rancher.duli.one)
+rancher_service_type: ClusterIP
+
+# Rancher hostname for ingress
+rancher_hostname: "rancher.{{ domain_base }}"

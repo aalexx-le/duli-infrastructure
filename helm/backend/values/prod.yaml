@@ -94,3 +94,21 @@ securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
   runAsNonRoot: false
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: "api.duli.one"
+  path: /
+  pathType: Prefix
+  clusterIssuer: "letsencrypt-prod"
+  proxyBodySize: "100m"
+  proxyReadTimeout: "600"
+  proxySendTimeout: "600"
+  enableCors: true
+  corsAllowOrigin: "https://duli.one,https://app.duli.one"
+  tls:
+    enabled: true
+    secretName: "duli-one-wildcard-tls"
+  annotations: {}

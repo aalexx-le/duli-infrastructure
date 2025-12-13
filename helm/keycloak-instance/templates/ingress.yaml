@@ -1,0 +1,45 @@
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/component: identity-provider
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    # Cert-manager automatic certificate management
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | quote }}
+    # NGINX ingress annotations for Keycloak
+    nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.proxyBodySize | default "10m" | quote }}
+    nginx.ingress.kubernetes.io/proxy-buffer-size: {{ .Values.ingress.proxyBufferSize | default "128k" | quote }}
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    # Important for Keycloak: preserve host header
+    nginx.ingress.kubernetes.io/proxy-pass-headers: "X-Forwarded-For,X-Forwarded-Proto,X-Forwarded-Host"
+    # Backend protocol - use HTTP since TLS terminates at ingress
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | default "nginx" }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.ingress.host | quote }}
+    secretName: {{ .Values.ingress.tls.secretName | default "keycloak-tls" }}
+  {{- end }}
+  rules:
+  - host: {{ .Values.ingress.host | quote }}
+    http:
+      paths:
+      - path: {{ .Values.ingress.path | default "/" }}
+        pathType: {{ .Values.ingress.pathType | default "Prefix" }}
+        backend:
+          service:
+            name: keycloak-service
+            port:
+              number: {{ .Values.service.port | default 8080 }}
+{{- end }}

@@ -108,3 +108,20 @@ securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
   runAsNonRoot: false
+
+# Ingress Configuration (n8n workflow engine)
+ingress:
+  enabled: true
+  className: nginx
+  host: "n8n.duli.one"
+  path: /
+  pathType: Prefix
+  clusterIssuer: "letsencrypt-prod"
+  proxyBodySize: "100m"
+  proxyReadTimeout: "3600"
+  proxySendTimeout: "3600"
+  websocket: true
+  tls:
+    enabled: true
+    secretName: "duli-one-wildcard-tls"
+  annotations: {}

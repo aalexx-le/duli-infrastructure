@@ -1,0 +1,23 @@
+# ============================================================================
+# ARGOCD INGRESS VALUES
+# ============================================================================
+# Ingress configuration for ArgoCD UI access via duli.one domain.
+# ArgoCD is deployed by kubespray, this chart only manages the Ingress.
+
+ingress:
+  enabled: true
+  className: nginx
+  host: "argocd.duli.one"
+  path: /
+  pathType: Prefix
+  clusterIssuer: "letsencrypt-prod"
+  tls:
+    enabled: true
+    secretName: "duli-one-wildcard-tls"
+  annotations: {}
+
+# ArgoCD server service details (deployed by kubespray)
+argocd:
+  namespace: argocd
+  serviceName: argocd-server
+  servicePort: 443

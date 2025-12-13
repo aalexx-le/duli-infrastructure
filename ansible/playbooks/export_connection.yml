@@ -3,176 +3,61 @@
   hosts: localhost
   connection: local
   tasks:
-    - name: Validate target_environment variable is provided
+    - name: Validate target_environment variable
       assert:
         that:
           - target_environment is defined
-          - target_environment | length > 0
-        fail_msg: "target_environment variable is required. Use: -e target_environment=staging or -e target_environment=prod"
-      run_once: true
+          - target_environment in ['staging', 'prod']
+        fail_msg: "Use: -e target_environment=staging or -e target_environment=prod"
 
     - name: Set target namespace
       set_fact:
         target_namespace: "{{ target_environment }}"
-      run_once: true
 
-    - name: "Get PostgreSQL service details from {{ target_namespace }} namespace"
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: "database-rw-lb"
-        namespace: "{{ target_namespace }}"
-      register: postgres_service
-      retries: 3
-      delay: 10
-      run_once: true
-
-    - name: "Get Redis service details from {{ target_namespace }} namespace"
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: "redis-replication-additional"
-        namespace: "{{ target_namespace }}"
-      register: redis_service
-      retries: 3
-      delay: 10
-      run_once: true
-
-    - name: "Get RabbitMQ service details from {{ target_namespace }} namespace"
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: "queue"
-        namespace: "{{ target_namespace }}"
-      register: rabbitmq_service
-      retries: 3
-      delay: 10
-      run_once: true
-
-    - name: "Get Keycloak service details from keycloak-system namespace"
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: "keycloak-instance-{{ target_environment }}"
-        namespace: "keycloak-system"
-      register: keycloak_service
-      retries: 3
-      delay: 10
-      run_once: true
-
-    - name: "Retrieve PostgreSQL credentials from {{ target_namespace }} namespace"
+    - name: Retrieve PostgreSQL credentials
       kubernetes.core.k8s_info:
         kind: Secret
-        name: "database-app"
+        name: database-app
         namespace: "{{ target_namespace }}"
       register: postgres_secret
       retries: 5
       delay: 10
       until: postgres_secret.resources | length > 0
-      run_once: true
 
-    - name: "Retrieve Redis credentials from {{ target_namespace }} namespace"
+    - name: Retrieve Redis credentials
       kubernetes.core.k8s_info:
         kind: Secret
-        name: "redis-credentials"
+        name: redis-credentials
         namespace: "{{ target_namespace }}"
       register: redis_secret
       retries: 5
       delay: 10
       until: redis_secret.resources | length > 0
-      run_once: true
 
-    - name: "Retrieve RabbitMQ default credentials from {{ target_namespace }} namespace"
+    - name: Retrieve RabbitMQ credentials
       kubernetes.core.k8s_info:
         kind: Secret
-        name: "queue-default-user"
+        name: queue-default-user
         namespace: "{{ target_namespace }}"
       register: rabbitmq_secret
       retries: 5
       delay: 10
       until: rabbitmq_secret.resources | length > 0
-      run_once: true
 
-    - name: Get ArgoCD service
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: argocd-server
-        namespace: argocd
-      register: argocd_svc
-      retries: 3
-      delay: 5
-      run_once: true
-
-    - name: Get Rancher service
-      kubernetes.core.k8s_info:
-        kind: Service
-        name: rancher
-        namespace: cattle-system
-      register: rancher_svc
-      retries: 3
-      delay: 5
-      run_once: true
-
-    - name: "Set node IP variable from inventory"
+    - name: Set connection info variables
       set_fact:
-        node_ip: "{{ hostvars[(groups['all'] | select('search', 'worker') | list)[0]].ansible_host if (groups['all'] | select('search', 'worker') | list) else '167.71.197.128' }}"
-      run_once: true
+        postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode }}"
+        postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode }}"
+        redis_password: "{{ redis_secret.resources[0].data.password | b64decode }}"
+        rabbitmq_user: "{{ rabbitmq_secret.resources[0].data.username | b64decode }}"
+        rabbitmq_pass: "{{ rabbitmq_secret.resources[0].data.password | b64decode }}"
 
-    - name: "Determine service access method (LoadBalancer vs NodePort)"
-      set_fact:
-        # Helper macro to get service host based on type (LoadBalancer or NodePort)
-        postgres_service_type: "{{ postgres_service.resources[0].spec.type if (postgres_service.resources | length > 0) else 'Unknown' }}"
-        redis_service_type: "{{ redis_service.resources[0].spec.type if (redis_service.resources | length > 0) else 'Unknown' }}"
-        rabbitmq_service_type: "{{ rabbitmq_service.resources[0].spec.type if (rabbitmq_service.resources | length > 0) else 'Unknown' }}"
-        keycloak_service_type: "{{ keycloak_service.resources[0].spec.type if (keycloak_service.resources | length > 0) else 'Unknown' }}"
-        argocd_service_type: "{{ argocd_svc.resources[0].spec.type if (argocd_svc.resources | length > 0) else 'Unknown' }}"
-        rancher_service_type: "{{ rancher_svc.resources[0].spec.type if (rancher_svc.resources | length > 0) else 'Unknown' }}"
-      run_once: true
-
-    - name: Set connection info variables (handles both LoadBalancer and NodePort)
-      set_fact:
-        # PostgreSQL: Extract host from LoadBalancer.ingress[0].ip or use node IP for NodePort
-        postgres_host: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'LoadBalancer' and postgres_service.resources[0].status.loadBalancer.ingress %}{{ postgres_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
-        postgres_port: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ postgres_service.resources[0].spec.ports[0].nodePort }}{% elif postgres_service.resources | length > 0 %}{{ postgres_service.resources[0].spec.ports[0].port }}{% else %}5432{% endif %}"
-        postgres_nodeport: "{{ postgres_service.resources[0].spec.ports[0].nodePort if (postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort') else '' }}"
-        postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode if (postgres_secret.resources | length > 0) else 'postgres' }}"
-        postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode if (postgres_secret.resources | length > 0) else '' }}"
-
-        # Redis: Extract host, port, and password
-        redis_host: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'LoadBalancer' and redis_service.resources[0].status.loadBalancer.ingress %}{{ redis_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
-        redis_port: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ redis_service.resources[0].spec.ports[0].nodePort }}{% elif redis_service.resources | length > 0 %}{{ redis_service.resources[0].spec.ports[0].port }}{% else %}6379{% endif %}"
-        redis_nodeport: "{{ redis_service.resources[0].spec.ports[0].nodePort if (redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort') else '' }}"
-        redis_password: "{{ redis_secret.resources[0].data.password | b64decode if (redis_secret.resources | length > 0) else '' }}"
-
-        # RabbitMQ: Extract multiple ports
-        rabbitmq_host: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'LoadBalancer' and rabbitmq_service.resources[0].status.loadBalancer.ingress %}{{ rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
-        rabbitmq_port: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}{% else %}{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='port') | first | default('5672') }}{% endif %}"
-        rabbitmq_mgmt_port: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'management') | map(attribute='port') | first | default('15672') }}"
-        rabbitmq_nodeport: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}"
-        rabbitmq_user: "{{ rabbitmq_secret.resources[0].data.username | b64decode if (rabbitmq_secret.resources | length > 0) else 'guest' }}"
-        rabbitmq_pass: "{{ rabbitmq_secret.resources[0].data.password | b64decode if (rabbitmq_secret.resources | length > 0) else '' }}"
-
-        # Keycloak
-        keycloak_host: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'LoadBalancer' and keycloak_service.resources[0].status.loadBalancer.ingress %}{{ keycloak_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
-        keycloak_port: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ keycloak_service.resources[0].spec.ports[0].nodePort }}{% elif keycloak_service.resources | length > 0 %}{{ keycloak_service.resources[0].spec.ports[0].port }}{% else %}8080{% endif %}"
-        keycloak_nodeport: "{{ keycloak_service.resources[0].spec.ports[0].nodePort if (keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort') else '' }}"
-
-        # ArgoCD: Handle both LoadBalancer and NodePort
-        argocd_host: "{% if argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'LoadBalancer' and argocd_svc.resources[0].status.loadBalancer.ingress %}{{ argocd_svc.resources[0].status.loadBalancer.ingress[0].ip }}{% elif argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
-        argocd_port: "{% if argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'NodePort' %}{{ argocd_svc.resources[0].spec.ports[0].nodePort }}{% elif argocd_svc.resources | length > 0 %}{{ argocd_svc.resources[0].spec.ports[0].port }}{% else %}443{% endif %}"
-        argocd_nodeport: "{{ argocd_svc.resources[0].spec.ports[0].nodePort if (argocd_svc.resources | length > 0 and argocd_svc.resources[0].spec.type == 'NodePort') else '' }}"
-
-        # Rancher: Handle both LoadBalancer and NodePort
-        rancher_host: "{% if rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'LoadBalancer' and rancher_svc.resources[0].status.loadBalancer.ingress %}{{ rancher_svc.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
-        rancher_port: "{% if rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'NodePort' %}{{ rancher_svc.resources[0].spec.ports[0].nodePort }}{% elif rancher_svc.resources | length > 0 %}{{ rancher_svc.resources[0].spec.ports[0].port }}{% else %}443{% endif %}"
-        rancher_nodeport: "{{ rancher_svc.resources[0].spec.ports[0].nodePort if (rancher_svc.resources | length > 0 and rancher_svc.resources[0].spec.type == 'NodePort') else '' }}"
-      run_once: true
-
-    - name: "Write connection information to INI file"
+    - name: Write connection information
       template:
         src: "{{ playbook_dir }}/../templates/connection-info.ini.j2"
         dest: "{{ playbook_dir }}/../connection-info-{{ target_namespace }}.ini"
         mode: '0600'
-      delegate_to: localhost
-      run_once: true
 
     - name: Display success message
       debug:
-        msg: "Connection information written to: {{ playbook_dir }}/../connection-info-{{ target_namespace }}.ini"
-      run_once: true
+        msg: "✓ Connection info: {{ playbook_dir }}/../connection-info-{{ target_namespace }}.ini"

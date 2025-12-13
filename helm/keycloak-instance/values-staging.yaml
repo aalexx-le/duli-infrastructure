@@ -1,7 +1,7 @@
 keycloak:
   instances: 1
-  # Accessed via LoadBalancer IP - will be assigned by cloud provider
-  hostname: "keycloak-staging"
+  # Hostname for Keycloak (used in realm configuration)
+  hostname: "auth.duli.one"
   db:
     vendor: postgres
     host: database-rw.staging.svc.cluster.local
@@ -13,12 +13,26 @@ keycloak:
     mode: "forwarded"
     headers: "forwarded"
 
-# Service configuration - use NodePort for staging (internal access)
+# Service configuration - ClusterIP since accessed via Ingress
 service:
-  type: NodePort
+  type: ClusterIP
   port: 8080
   targetPort: 8080
-  # Note: exposing on different port than production to avoid conflicts
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: "auth.duli.one"
+  path: /
+  pathType: Prefix
+  clusterIssuer: "letsencrypt-prod"
+  proxyBodySize: "10m"
+  proxyBufferSize: "128k"
+  tls:
+    enabled: true
+    secretName: "duli-one-wildcard-tls"
+  annotations: {}
 
 # Client secrets for staging
 # Sourced from sealed secrets in keycloak-system namespace

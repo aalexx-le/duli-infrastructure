@@ -1,11 +1,26 @@
 ---
+# ============================================================================
+# CERT-MANAGER CLUSTER ISSUERS
+# ============================================================================
+# ClusterIssuers for automatic TLS certificate management via Let's Encrypt.
+# Uses Cloudflare DNS-01 challenge for wildcard certificate support.
+#
+# DNS-01 advantages over HTTP-01:
+# - Works through Cloudflare proxy (HTTP-01 can fail with proxied traffic)
+# - Supports wildcard certificates (*.duli.one)
+# - No need to expose HTTP challenge endpoints
+
+# Self-signed issuer for internal/testing certificates
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: selfsigned-issuer
 spec:
   selfSigned: {}
+
 ---
+# Let's Encrypt Staging - Use for testing (higher rate limits)
+# Certificates from staging are NOT trusted by browsers
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -13,14 +28,24 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: admin@duli.ai  # Change this to your email
+    email: {{ .Values.acme.email }}
     privateKeySecretRef:
       name: letsencrypt-staging-key
     solvers:
-    - http01:
-        ingress:
-          class: nginx
+    # DNS-01 challenge via Cloudflare API
+    - dns01:
+        cloudflare:
+          email: {{ .Values.cloudflare.email }}
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+      selector:
+        dnsZones:
+        - "duli.one"
+
 ---
+# Let's Encrypt Production - Use for real certificates
+# Rate limited: 50 certificates per domain per week
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -28,10 +53,17 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@duli.ai  # Change this to your email
+    email: {{ .Values.acme.email }}
     privateKeySecretRef:
       name: letsencrypt-prod-key
     solvers:
-    - http01:
-        ingress:
-          class: nginx
+    # DNS-01 challenge via Cloudflare API
+    - dns01:
+        cloudflare:
+          email: {{ .Values.cloudflare.email }}
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+      selector:
+        dnsZones:
+        - "duli.one"

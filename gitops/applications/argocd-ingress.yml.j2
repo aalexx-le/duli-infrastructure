@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-ingress
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/managed-by: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: {{ git_repo_url }}
+    targetRevision: {{ git_branch }}
+    path: helm/argocd-ingress
+    helm:
+      releaseName: argocd-ingress
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false

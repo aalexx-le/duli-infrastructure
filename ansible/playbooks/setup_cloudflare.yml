@@ -1,0 +1,354 @@
+---
+# ============================================================================
+# CLOUDFLARE SETUP - Tunnel + DNS + SSL
+# ============================================================================
+# Automated setup of Cloudflare Tunnel, DNS records, and SSL/TLS settings.
+# Prerequisites: vault_cloudflare_api_token, vault_cloudflare_account_id
+# ============================================================================
+
+- name: Complete Cloudflare Setup (Tunnel + DNS + SSL)
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    cloudflare_zone: "duli.one"
+    cloudflare_email: "engineer.duli@gmail.com"
+    tunnel_name: "duli-tunnel"
+    cloudflared_namespace: "cloudflare-system"
+    helm_chart_path: "{{ playbook_dir }}/../../helm/cloudflared"
+    
+    # DNS subdomains for HTTPS services (via ingress-nginx)
+    cloudflare_subdomains:
+      - name: "@"
+        type: "A"
+      - name: "api"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "ai"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "n8n"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "auth"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "argocd"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "rancher"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "queue"
+        type: "CNAME"
+        content: "duli.one"
+      - name: "queue.staging"
+        type: "CNAME"
+        content: "duli.one"
+
+  tasks:
+    # ========================================================================
+    # CLOUDFLARE TUNNEL
+    # ========================================================================
+    
+    - name: Validate Cloudflare credentials
+      assert:
+        that:
+          - vault_cloudflare_api_token is defined
+          - vault_cloudflare_api_token | length > 0
+          - vault_cloudflare_api_token != "change-me-to-your-cloudflare-api-token"
+          - vault_cloudflare_account_id is defined
+          - vault_cloudflare_account_id | length > 0
+          - vault_cloudflare_account_id != "change-me-to-your-cloudflare-account-id"
+        fail_msg: "Cloudflare API token and Account ID must be set in vault.yml"
+    
+    - name: Check if cloudflared CLI is installed
+      command: which cloudflared
+      register: cloudflared_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Display cloudflared installation instructions if missing
+      fail:
+        msg: |
+          Install cloudflared CLI:
+          macOS: brew install cloudflare/cloudflare/cloudflared
+          Linux: wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && sudo dpkg -i cloudflared-linux-amd64.deb
+      when: cloudflared_check.rc != 0
+    
+    - name: Check if Cloudflare cert exists
+      stat:
+        path: "{{ ansible_env.HOME }}/.cloudflared/cert.pem"
+      register: cloudflare_cert
+    
+    - name: Authenticate with Cloudflare if needed
+      fail:
+        msg: "Run: cloudflared tunnel login"
+      when: not cloudflare_cert.stat.exists
+    
+    - name: List existing tunnels
+      command: cloudflared tunnel list --output json
+      register: tunnel_list
+      changed_when: false
+    
+    - name: Parse tunnel list
+      set_fact:
+        existing_tunnels: "{{ tunnel_list.stdout | from_json }}"
+        tunnel_exists: "{{ tunnel_list.stdout | from_json | selectattr('name', 'equalto', tunnel_name) | list | length > 0 }}"
+    
+    - name: Get existing tunnel ID
+      set_fact:
+        tunnel_id: "{{ (existing_tunnels | selectattr('name', 'equalto', tunnel_name) | first).id }}"
+      when: tunnel_exists
+    
+    - name: Create new Cloudflare Tunnel
+      command: "cloudflared tunnel --output json create {{ tunnel_name }}"
+      register: tunnel_create
+      when: not tunnel_exists
+    
+    - name: Set tunnel ID from creation
+      set_fact:
+        tunnel_id: "{{ (tunnel_create.stdout | from_json).id }}"
+      when: not tunnel_exists
+    
+    - name: Find and read tunnel credentials
+      block:
+        - find:
+            paths: "{{ ansible_env.HOME }}/.cloudflared"
+            patterns: "{{ tunnel_id }}.json"
+          register: tunnel_creds_file
+        
+        - name: Check if credentials file exists
+          fail:
+            msg: |
+              Tunnel credentials file not found: {{ ansible_env.HOME }}/.cloudflared/{{ tunnel_id }}.json
+              
+              This usually happens when:
+              1. The tunnel was created on a different machine
+              2. The credentials file was deleted
+              
+              Solutions:
+              1. Delete the existing tunnel and let Ansible create a new one:
+                 cloudflared tunnel delete {{ tunnel_name }}
+              
+              2. Or manually download the credentials from Cloudflare dashboard
+          when: tunnel_creds_file.files | length == 0
+        
+        - slurp:
+            src: "{{ tunnel_creds_file.files[0].path }}"
+          register: tunnel_creds_content
+          when: tunnel_creds_file.files | length > 0
+        
+        - set_fact:
+            tunnel_credentials: "{{ tunnel_creds_content.content | b64decode | from_json }}"
+            tunnel_creds_base64: "{{ tunnel_creds_content.content }}"
+          when: tunnel_creds_file.files | length > 0
+    
+    - name: Create cloudflare-system namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ cloudflared_namespace }}"
+    
+    - name: Create tunnel credentials secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: cloudflared-credentials
+            namespace: "{{ cloudflared_namespace }}"
+          type: Opaque
+          data:
+            credentials.json: "{{ tunnel_creds_base64 }}"
+    
+    - name: Deploy cloudflared via Helm
+      kubernetes.core.helm:
+        name: cloudflared
+        chart_ref: "{{ helm_chart_path }}"
+        release_namespace: "{{ cloudflared_namespace }}"
+        create_namespace: true
+        values:
+          cloudflare:
+            account: "{{ vault_cloudflare_account_id }}"
+            tunnelName: "{{ tunnel_name }}"
+            tunnelId: "{{ tunnel_id }}"
+            secretName: cloudflared-credentials
+            enableWarp: true
+            ingress:
+              - hostname: db.staging.duli.one
+                service: tcp://database-rw.staging.svc.cluster.local:5432
+              - hostname: redis.staging.duli.one
+                service: tcp://redis-replication.staging.svc.cluster.local:6379
+              - hostname: mq.staging.duli.one
+                service: tcp://queue.staging.svc.cluster.local:5672
+              - hostname: db.duli.one
+                service: tcp://database-rw.prod.svc.cluster.local:5432
+              - hostname: redis.duli.one
+                service: tcp://redis-replication.prod.svc.cluster.local:6379
+              - hostname: mq.duli.one
+                service: tcp://queue.prod.svc.cluster.local:5672
+              # Note: Catch-all (http_status:404) is auto-added by Helm template
+          replicaCount: 2
+          image:
+            tag: "2024.12.2"
+        wait: true
+        wait_timeout: 5m
+    
+    - name: Wait for cloudflared pods
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ cloudflared_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=cloudflare-tunnel
+      register: cloudflared_pods
+      until: >
+        cloudflared_pods.resources | length > 0 and
+        cloudflared_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == cloudflared_pods.resources | length
+      retries: 30
+      delay: 10
+    
+    # ========================================================================
+    # DNS AND SSL
+    # ========================================================================
+    
+    - name: Get ingress-nginx LoadBalancer IP
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        name: ingress-nginx
+        namespace: ingress-nginx
+      register: ingress_service
+      until: >
+        ingress_service.resources | length > 0 and
+        ingress_service.resources[0].status.loadBalancer.ingress is defined and
+        ingress_service.resources[0].status.loadBalancer.ingress | length > 0
+      retries: 30
+      delay: 10
+    
+    - name: Extract LoadBalancer IP
+      set_fact:
+        loadbalancer_ip: "{{ ingress_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+    
+    - name: Get Cloudflare Zone ID
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ cloudflare_zone }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        status_code: [200]
+      register: zone_lookup
+    
+    - name: Extract Zone ID
+      set_fact:
+        zone_id: "{{ zone_lookup.json.result[0].id }}"
+    
+    - name: Configure root A record
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ cloudflare_zone }}"
+        type: A
+        value: "{{ loadbalancer_ip }}"
+        proxied: yes
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+    
+    - name: Configure CNAME records
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item.name }}.{{ cloudflare_zone if item.name != '@' else '' }}"
+        type: "{{ item.type }}"
+        value: "{{ item.content }}"
+        proxied: yes
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+      loop: "{{ cloudflare_subdomains | selectattr('type', 'equalto', 'CNAME') | list }}"
+    
+    - name: Set SSL mode to Full (Strict)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ zone_id }}/settings/ssl"
+        method: PATCH
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          value: "strict"
+        status_code: [200]
+    
+    - name: Enable Always Use HTTPS
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ zone_id }}/settings/always_use_https"
+        method: PATCH
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        body_format: json
+        body:
+          value: "on"
+        status_code: [200]
+    
+    - name: Set Minimum TLS Version to 1.2
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ zone_id }}/settings/min_tls_version"
+        method: PATCH
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        body_format: json
+        body:
+          value: "1.2"
+        status_code: [200]
+    
+    - name: Enable TLS 1.3
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ zone_id }}/settings/tls_1_3"
+        method: PATCH
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        body_format: json
+        body:
+          value: "on"
+        status_code: [200]
+    
+    - name: Enable Automatic HTTPS Rewrites
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ zone_id }}/settings/automatic_https_rewrites"
+        method: PATCH
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        body_format: json
+        body:
+          value: "on"
+        status_code: [200]
+    
+    # ========================================================================
+    # CLOUDFLARE ACCESS
+    # ========================================================================
+    
+    - name: Display Cloudflare Access setup
+      debug:
+        msg: |
+          Configure Cloudflare Access at: https://one.dash.cloudflare.com
+          Create applications for: db.staging.duli.one, redis.staging.duli.one, mq.staging.duli.one
+          Policy: Allow @yourcompany.com emails
+    
+    # ========================================================================
+    # DEPLOYMENT SUMMARY
+    # ========================================================================
+    
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ✓ Tunnel: {{ tunnel_name }} ({{ tunnel_id }})
+          ✓ Replicas: {{ cloudflared_pods.resources | length }}
+          ✓ LoadBalancer: {{ loadbalancer_ip }}
+          ✓ SSL: Full (Strict), TLS 1.2+
+          
+          HTTPS: https://api.duli.one, https://ai.duli.one, https://n8n.duli.one
+          TCP: db.staging.duli.one:5432, redis.staging.duli.one:6379, mq.staging.duli.one:5672
+          
+          Next: Configure Cloudflare Access (see above) for direct developer access

@@ -7,6 +7,10 @@ cluster:
   image: rabbitmq:4.1.3-management-alpine
   imagePullPolicy: IfNotPresent
   
+  # Service configuration - use ClusterIP (accessed via Ingress and TCP pass-through)
+  service:
+    type: ClusterIP
+  
   # Storage configuration
   storage:
     storageClass: do-block-storage
@@ -36,3 +40,9 @@ cluster:
       # Production optimizations
       channel_error_max = 500
       num_acceptors.tcp = 64
+
+# Ingress configuration for Management UI
+ingress:
+  enabled: true
+  host: queue.duli.one
+  clusterIssuer: letsencrypt-prod

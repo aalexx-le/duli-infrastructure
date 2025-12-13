@@ -2,6 +2,6 @@
 # Overrides for staging environment
 
 redis:
-  # Service configuration - use NodePort for staging (internal access)
+  # Service configuration - use ClusterIP (accessed via TCP pass-through)
   service:
-    type: NodePort
+    type: ClusterIP

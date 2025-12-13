@@ -1,2 +1,29 @@
-# Cert-Manager ClusterIssuers
-# This chart is intentionally empty - all configuration is in the templates
+# ============================================================================
+# CERT-MANAGER ISSUERS VALUES
+# ============================================================================
+# Configuration for ClusterIssuers and certificate management.
+
+# ACME (Let's Encrypt) Configuration
+acme:
+  # Email for Let's Encrypt notifications (certificate expiry warnings)
+  email: "engineer.duli@gmail.com"
+
+# Cloudflare Configuration for DNS-01 Challenge
+cloudflare:
+  # Cloudflare account email
+  email: "engineer.duli@gmail.com"
+  # Whether to create the API token secret via Helm
+  # Set to false if using SealedSecrets or external-secrets
+  createSecret: false
+  # API token value (only used if createSecret: true)
+  # In production, use: --set cloudflare.apiToken=$CLOUDFLARE_API_TOKEN
+  apiToken: ""
+
+# Wildcard Certificate Configuration
+wildcardCertificate:
+  # Enable pre-provisioned wildcard certificate
+  enabled: true
+  # Namespace where the certificate secret will be created
+  namespace: "cert-manager"
+  # ClusterIssuer to use (letsencrypt-staging for testing, letsencrypt-prod for production)
+  issuer: "letsencrypt-prod"

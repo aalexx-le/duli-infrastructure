@@ -1,25 +1,38 @@
 keycloak:
   instances: 3  # High availability - 3 replicas for production
-  # Accessed via LoadBalancer IP - will be assigned by cloud provider
-  hostname: "keycloak-prod"
+  # Hostname for Keycloak (used in realm configuration)
+  hostname: "auth.duli.one"
   db:
     vendor: postgres
     host: database-rw.prod.svc.cluster.local
     secretName: database-app
   tls:
-    enabled: true
-    issuerName: letsencrypt-prod
-    issuerKind: ClusterIssuer
+    enabled: false  # TLS terminates at ingress level
   # Proxy configuration - replaces deprecated 'proxy' option
   proxy:
     mode: "forwarded"
     headers: "forwarded"
 
-# LoadBalancer service - provides external IP access
+# Service configuration - ClusterIP since accessed via Ingress
 service:
-  type: LoadBalancer
-  port: 8443
-  targetPort: 8443
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: "auth.duli.one"
+  path: /
+  pathType: Prefix
+  clusterIssuer: "letsencrypt-prod"
+  proxyBodySize: "10m"
+  proxyBufferSize: "128k"
+  tls:
+    enabled: true
+    secretName: "duli-one-wildcard-tls"
+  annotations: {}
 
 # Client secrets for production
 # Sourced from sealed secrets in keycloak-system namespace
