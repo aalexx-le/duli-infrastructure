@@ -44,7 +44,9 @@ spec:
             name: {{ .Values.cluster.name }}-rw-lb
           spec:
             type: {{ .Values.cluster.service.type | default "LoadBalancer" }}
+{{- if eq (.Values.cluster.service.type | default "LoadBalancer") "LoadBalancer" }}
             externalTrafficPolicy: {{ .Values.cluster.service.externalTrafficPolicy | default "Cluster" }}
+{{- end }}
 
   storage:
     size: {{ .Values.cluster.storage.size }}

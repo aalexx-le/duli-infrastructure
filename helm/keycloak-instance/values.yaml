@@ -7,9 +7,7 @@ keycloak:
     host: postgres-db
     secretName: keycloak-db-secret
   tls:
-    enabled: true
-    issuerName: letsencrypt-prod
-    issuerKind: ClusterIssuer
+    enabled: false  # TLS handled by ingress-nginx, not Keycloak itself
   # Proxy configuration - replaces deprecated 'proxy' option
   proxy:
     mode: "forwarded"
@@ -17,9 +15,9 @@ keycloak:
 
 # Service configuration - Default to LoadBalancer
 service:
-  type: LoadBalancer
-  port: 8443
-  targetPort: 8443
+  type: ClusterIP  # ClusterIP - accessed via ingress-nginx
+  port: 8080
+  targetPort: 8080
 
 # Client secrets for realm import
 # Sourced from sealed secrets in keycloak-system namespace
