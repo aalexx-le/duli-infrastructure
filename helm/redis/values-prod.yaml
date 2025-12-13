@@ -1,4 +1,13 @@
 # Redis Production Configuration
+
+# Authentication configuration
+auth:
+  enabled: true
+  sentinel: true
+  # Password is provided via existingSecret in Helm deployment
+  existingSecret: redis-credentials
+  existingSecretPasswordKey: password
+
 master:
   persistence:
     size: 50Gi

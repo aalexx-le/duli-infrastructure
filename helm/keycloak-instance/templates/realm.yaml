@@ -8,8 +8,58 @@ spec:
   realm:
     realm: duli
     enabled: true
+
+    # OAuth/OIDC Identity Providers (configured via environment variables from sealed secrets)
+    identityProviders:
+      - alias: google
+        providerId: google
+        enabled: true
+        config:
+          clientId: "${OAUTH_GOOGLE_CLIENT_ID}"
+          clientSecret: "${OAUTH_GOOGLE_CLIENT_SECRET}"
+          defaultScope: "openid profile email"
+
+      - alias: github
+        providerId: github
+        enabled: true
+        config:
+          clientId: "${OAUTH_GITHUB_CLIENT_ID}"
+          clientSecret: "${OAUTH_GITHUB_CLIENT_SECRET}"
+          defaultScope: "user:email"
+
+    # Keycloak Clients for Authentication
     clients:
-      - clientId: ai-service
-        secret: "{{ .Values.clientSecrets.aiService }}"
+      # Backend Service Client (Confidential)
+      # Used by NestJS backend to:
+      # 1. Exchange authorization codes for tokens (mobile OAuth callback)
+      # 2. Validate and verify access tokens from mobile clients
+      # 3. Refresh expired tokens
+      # 4. Call Keycloak management APIs
+      - clientId: backend-service
+        name: "Backend Service (NestJS)"
+        description: "Confidential client for backend token management and validation"
+        secret: "${KEYCLOAK_BACKEND_SERVICE_SECRET}"
+        publicClient: false
+        directAccessGrantsEnabled: false
         redirectUris:
-          - "https://ai.duli.ai/*"
+          - "http://localhost:3000/*"
+          - "http://localhost:8080/*"
+        webOrigins:
+          - "http://localhost:3000"
+          - "http://localhost:8080"
+
+      # Mobile Client (Public)
+      # Used by React Native app for:
+      # 1. Initiating OAuth flow with identity providers (Google, GitHub)
+      # 2. Receiving authorization code at callback deep link
+      # 3. Sending code to backend for token exchange
+      # 4. Storing and using access tokens for API calls
+      - clientId: mobile
+        name: "Mobile Application (React Native)"
+        description: "Public client for mobile OAuth flows with deep link callbacks"
+        publicClient: true
+        redirectUris:
+          - "exp://localhost:19000/--/auth/callback"
+          - "duliapp://auth/callback"
+        webOrigins:
+          - "*"

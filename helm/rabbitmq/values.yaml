@@ -1,4 +1,8 @@
 # RabbitMQ Cluster Configuration
+# Note: RabbitMQ Cluster Operator automatically generates admin credentials
+# Credentials are stored in Kubernetes secret: queue-default-user
+# Retrieve with: kubectl get secret queue-default-user -n <namespace> -o jsonpath='{.data.username}' | base64 -d
+
 cluster:
   enabled: true
   name: queue

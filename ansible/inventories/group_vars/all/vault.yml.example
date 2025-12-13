@@ -42,3 +42,17 @@ vault_rabbitmq_password: "change-me-to-secure-rabbitmq-password-min-32-chars"
 # GitOps Tools
 vault_argocd_admin_password: "change-me-to-secure-argocd-password"
 vault_rancher_bootstrap_password: "change-me-to-secure-rancher-password"
+
+# Keycloak OAuth Identity Providers (Secret: keycloak-oauth-credentials)
+# Google OAuth - register at https://console.cloud.google.com/
+vault_oauth_google_client_id: "change-me-to-your-google-client-id.apps.googleusercontent.com"
+vault_oauth_google_client_secret: "change-me-to-your-google-client-secret"
+
+# GitHub OAuth - register at https://github.com/settings/developers
+vault_oauth_github_client_id: "change-me-to-your-github-client-id"
+vault_oauth_github_client_secret: "change-me-to-your-github-client-secret"
+
+# Keycloak Backend Service Client Secret (Secret: keycloak-backend-service)
+# Confidential client secret for NestJS backend token exchange and validation
+# Generate with: openssl rand -base64 32
+vault_keycloak_backend_service_secret: "change-me-to-secure-backend-client-secret-min-32-chars"

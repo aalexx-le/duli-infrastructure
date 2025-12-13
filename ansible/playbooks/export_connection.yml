@@ -67,6 +67,17 @@
       until: postgres_secret.resources | length > 0
       run_once: true
 
+    - name: "Retrieve Redis credentials from {{ target_namespace }} namespace"
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: "redis-credentials"
+        namespace: "{{ target_namespace }}"
+      register: redis_secret
+      retries: 5
+      delay: 10
+      until: redis_secret.resources | length > 0
+      run_once: true
+
     - name: "Retrieve RabbitMQ default credentials from {{ target_namespace }} namespace"
       kubernetes.core.k8s_info:
         kind: Secret
@@ -100,14 +111,7 @@
 
     - name: "Set node IP variable from inventory"
       set_fact:
-        node_ip: "{{ hostvars[groups['all'] | select('search', 'worker') | first].ansible_host | default('<node-ip>') }}"
-      run_once: true
-
-    - name: "Extract PostgreSQL credentials from secret"
-      set_fact:
-        postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode }}"
-        postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode }}"
-      when: postgres_secret.resources | length > 0
+        node_ip: "{{ hostvars[(groups['all'] | select('search', 'worker') | list)[0]].ansible_host if (groups['all'] | select('search', 'worker') | list) else '167.71.197.128' }}"
       run_once: true
 
     - name: "Determine service access method (LoadBalancer vs NodePort)"
@@ -127,21 +131,22 @@
         postgres_host: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'LoadBalancer' and postgres_service.resources[0].status.loadBalancer.ingress %}{{ postgres_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
         postgres_port: "{% if postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort' %}{{ postgres_service.resources[0].spec.ports[0].nodePort }}{% elif postgres_service.resources | length > 0 %}{{ postgres_service.resources[0].spec.ports[0].port }}{% else %}5432{% endif %}"
         postgres_nodeport: "{{ postgres_service.resources[0].spec.ports[0].nodePort if (postgres_service.resources | length > 0 and postgres_service.resources[0].spec.type == 'NodePort') else '' }}"
-        postgres_user: "{{ postgres_user | default('postgres') }}"
-        postgres_pass: "{{ postgres_pass | default('') }}"
+        postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode if (postgres_secret.resources | length > 0) else 'postgres' }}"
+        postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode if (postgres_secret.resources | length > 0) else '' }}"
 
-        # Redis: Extract host and port
+        # Redis: Extract host, port, and password
         redis_host: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'LoadBalancer' and redis_service.resources[0].status.loadBalancer.ingress %}{{ redis_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
         redis_port: "{% if redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort' %}{{ redis_service.resources[0].spec.ports[0].nodePort }}{% elif redis_service.resources | length > 0 %}{{ redis_service.resources[0].spec.ports[0].port }}{% else %}6379{% endif %}"
         redis_nodeport: "{{ redis_service.resources[0].spec.ports[0].nodePort if (redis_service.resources | length > 0 and redis_service.resources[0].spec.type == 'NodePort') else '' }}"
+        redis_password: "{{ redis_secret.resources[0].data.password | b64decode if (redis_secret.resources | length > 0) else '' }}"
 
         # RabbitMQ: Extract multiple ports
         rabbitmq_host: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'LoadBalancer' and rabbitmq_service.resources[0].status.loadBalancer.ingress %}{{ rabbitmq_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"
         rabbitmq_port: "{% if rabbitmq_service.resources | length > 0 and rabbitmq_service.resources[0].spec.type == 'NodePort' %}{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}{% else %}{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='port') | first | default('5672') }}{% endif %}"
         rabbitmq_mgmt_port: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'management') | map(attribute='port') | first | default('15672') }}"
         rabbitmq_nodeport: "{{ rabbitmq_service.resources[0].spec.ports | selectattr('name', 'equalto', 'amqp') | map(attribute='nodePort') | first | default('') }}"
-        rabbitmq_user: "{{ rabbitmq_user | default('guest') }}"
-        rabbitmq_pass: "{{ rabbitmq_pass | default('') }}"
+        rabbitmq_user: "{{ rabbitmq_secret.resources[0].data.username | b64decode if (rabbitmq_secret.resources | length > 0) else 'guest' }}"
+        rabbitmq_pass: "{{ rabbitmq_secret.resources[0].data.password | b64decode if (rabbitmq_secret.resources | length > 0) else '' }}"
 
         # Keycloak
         keycloak_host: "{% if keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'LoadBalancer' and keycloak_service.resources[0].status.loadBalancer.ingress %}{{ keycloak_service.resources[0].status.loadBalancer.ingress[0].ip }}{% elif keycloak_service.resources | length > 0 and keycloak_service.resources[0].spec.type == 'NodePort' %}{{ node_ip }}{% else %}(pending){% endif %}"

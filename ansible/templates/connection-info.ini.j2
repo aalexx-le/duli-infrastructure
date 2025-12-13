@@ -13,7 +13,8 @@ connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{{ postgre
 host = {{ redis_host }}
 port = {{ redis_port }}
 protocol = redis
-connection_url = redis://{{ redis_host }}:{{ redis_port }}
+password = {{ redis_password | default('') }}
+connection_url = {% if redis_password %}redis://:{{ redis_password }}@{{ redis_host }}:{{ redis_port }}{% else %}redis://{{ redis_host }}:{{ redis_port }}{% endif %}
 
 [rabbitmq]
 host = {{ rabbitmq_host }}

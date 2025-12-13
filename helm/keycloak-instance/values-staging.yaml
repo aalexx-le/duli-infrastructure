@@ -21,5 +21,16 @@ service:
   # Note: exposing on different port than production to avoid conflicts
 
 # Client secrets for staging
+# Sourced from sealed secrets in keycloak-system namespace
 clientSecrets:
-  aiService: "staging-ai-service-secret"
+  backendService: "keycloak-backend-service/client_secret"
+
+# OAuth Identity Provider Configuration
+# Sourced from sealed secrets: keycloak-oauth-credentials
+oauth:
+  google:
+    clientId: "keycloak-oauth-credentials/google_client_id"
+    clientSecret: "keycloak-oauth-credentials/google_client_secret"
+  github:
+    clientId: "keycloak-oauth-credentials/github_client_id"
+    clientSecret: "keycloak-oauth-credentials/github_client_secret"
