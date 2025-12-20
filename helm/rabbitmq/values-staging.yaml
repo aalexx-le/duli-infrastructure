@@ -45,5 +45,5 @@ cluster:
 # Ingress configuration for Management UI
 ingress:
   enabled: true
-  host: queue.staging.duli.one
+  host: queue-staging.duli.one
   clusterIssuer: letsencrypt-prod

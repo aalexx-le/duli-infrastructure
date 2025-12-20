@@ -1,7 +1,7 @@
 keycloak:
   instances: 1
   # Hostname for Keycloak (used in realm configuration)
-  hostname: "auth.duli.one"
+  hostname: "auth-staging.duli.one"
   db:
     vendor: postgres
     host: database-rw.staging.svc.cluster.local
@@ -23,7 +23,7 @@ service:
 ingress:
   enabled: true
   className: nginx
-  host: "auth.staging.duli.one"
+  host: "auth-staging.duli.one"
   path: /
   pathType: Prefix
   clusterIssuer: "letsencrypt-prod"

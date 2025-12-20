@@ -197,10 +197,10 @@ ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 **Staging:**
 | Domain | Service | Description |
 |--------|---------|-------------|
-| api.staging.duli.one | backend | Backend API service |
-| ai.staging.duli.one | ai-service | AI/ML service |
-| n8n.staging.duli.one | scheduler | n8n workflow automation |
-| auth.staging.duli.one | keycloak | Authentication (Keycloak) |
+| api-staging.duli.one | backend | Backend API service |
+| ai-staging.duli.one | ai-service | AI/ML service |
+| n8n-staging.duli.one | scheduler | n8n workflow automation |
+| auth-staging.duli.one | keycloak | Authentication (Keycloak) |
 
 ### Cluster-Wide Management (HTTPS via ingress-nginx)
 
@@ -222,10 +222,10 @@ ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 **Staging:**
 | Domain | Service | Port | Protocol |
 |--------|---------|------|----------|
-| db.staging.duli.one | PostgreSQL | 5432 | TCP |
-| redis.staging.duli.one | Redis | 6379 | TCP |
-| mq.staging.duli.one | RabbitMQ AMQP | 5672 | TCP |
-| queue.staging.duli.one | RabbitMQ Mgmt | 15672 | HTTPS |
+| db-staging.duli.one | PostgreSQL | 5432 | TCP |
+| redis-staging.duli.one | Redis | 6379 | TCP |
+| mq-staging.duli.one | RabbitMQ AMQP | 5672 | TCP |
+| queue-staging.duli.one | RabbitMQ Mgmt | 15672 | HTTPS |
 
 ---
 
@@ -283,7 +283,7 @@ Ansible creates these DNS records automatically:
 | CNAME | argocd | duli.one | 🟠 Proxied |
 | CNAME | rancher | duli.one | 🟠 Proxied |
 | CNAME | queue | duli.one | 🟠 Proxied |
-| CNAME | queue.staging | duli.one | 🟠 Proxied |
+| CNAME | queue-staging | duli.one | 🟠 Proxied |
 
 **Note:** Infrastructure service DNS (db, redis, mq) is managed by Cloudflare Tunnel, not DNS records.
 
@@ -343,7 +343,7 @@ To access TCP services, you must enroll your device with Cloudflare Zero Trust.
 
 **PostgreSQL (Staging):**
 ```bash
-psql -h db.staging.duli.one -p 5432 -U duli_user
+psql -h db-staging.duli.one -p 5432 -U duli_user
 ```
 
 **PostgreSQL (Production):**
@@ -353,16 +353,16 @@ psql -h db.duli.one -p 5432 -U duli_user
 
 **Redis (Staging):**
 ```bash
-redis-cli -h redis.staging.duli.one -p 6379 -a <password>
+redis-cli -h redis-staging.duli.one -p 6379 -a <password>
 ```
 
 **RabbitMQ (Staging):**
 ```bash
 # AMQP connection
-amqp://user:pass@mq.staging.duli.one:5672
+amqp://user:pass@mq-staging.duli.one:5672
 
 # Management UI
-https://queue.staging.duli.one
+https://queue-staging.duli.one
 ```
 
 ### Cloudflare WARP Client (Required for TCP Access)
@@ -448,7 +448,7 @@ warp-cli status
 4. **Verify connection**:
    ```bash
    # Test direct database access (no browser popup!)
-   psql -h db.staging.duli.one -p 5432 -U duli_user
+   psql -h db-staging.duli.one -p 5432 -U duli_user
    ```
 
 **What happens automatically:**
@@ -500,7 +500,7 @@ kubectl exec -it <cloudflared-pod> -- cloudflared tunnel info
 ```bash
 # Verify DNS records
 dig api.duli.one
-nslookup db.staging.duli.one
+nslookup db-staging.duli.one
 
 # Check Cloudflare dashboard
 # Go to DNS → Records
@@ -614,7 +614,7 @@ Requires `cloudflared access tcp` command to bridge the connection. Use this for
 
 ```bash
 # Example: Connect to Staging DB
-cloudflared access tcp --hostname db.staging.duli.one --url localhost:5432 &
+cloudflared access tcp --hostname db-staging.duli.one --url localhost:5432 &
 psql -h localhost -p 5432 -U duli_user -d duli_db
 ```
 
@@ -632,7 +632,7 @@ kubectl get svc -n staging database-rw
 psql -h 10.233.x.x -p 5432 -U duli_user -d duli_db
 ```
 
-> **Note:** Hostname-based access via WARP DNS (e.g. `psql -h db.staging.duli.one`) requires configuring "Local Domain Fallback" or Gateway DNS policies in Cloudflare Zero Trust dashboard, which is not enabled by default.
+> **Note:** Hostname-based access via WARP DNS (e.g. `psql -h db-staging.duli.one`) requires configuring "Local Domain Fallback" or Gateway DNS policies in Cloudflare Zero Trust dashboard, which is not enabled by default.
 
 ---
 

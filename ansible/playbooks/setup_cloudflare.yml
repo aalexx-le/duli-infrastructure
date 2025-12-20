@@ -28,52 +28,38 @@
         namespace: "staging"
         values_file: "values-staging.yaml"
         subdomains:
-          - name: "api.staging"
-            type: "CNAME"
-            content: "duli.one"
-          - name: "ai.staging"
-            type: "CNAME"
-            content: "duli.one"
-          - name: "n8n.staging"
-            type: "CNAME"
-            content: "duli.one"
-          - name: "auth.staging"
-            type: "CNAME"
-            content: "duli.one"
-          - name: "queue.staging"
-            type: "CNAME"
-            content: "duli.one"
+          - name: "api-staging"
+            type: "A"
+          - name: "ai-staging"
+            type: "A"
+          - name: "n8n-staging"
+            type: "A"
+          - name: "auth-staging"
+            type: "A"
+          - name: "queue-staging"
+            type: "A"
         tunnel_dns_records:
-          - "db.staging"
-          - "redis.staging"
-          - "mq.staging"
+          - "db-staging"
+          - "redis-staging"
+          - "mq-staging"
       prod:
         namespace: "prod"
         values_file: "values-prod.yaml"
         subdomains:
-          - name: "@"
-            type: "A"
           - name: "api"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
           - name: "ai"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
           - name: "n8n"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
           - name: "auth"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
           - name: "argocd"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
           - name: "rancher"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
           - name: "queue"
-            type: "CNAME"
-            content: "duli.one"
+            type: "A"
         tunnel_dns_records:
           - "db"
           - "redis"
@@ -285,6 +271,28 @@
         api_token: "{{ vault_cloudflare_api_token }}"
         state: present
       when: target_environment == 'prod'
+    
+    - name: Delete existing CNAME records for A record subdomains
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item.name }}.{{ cloudflare_zone }}"
+        type: CNAME
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: absent
+      loop: "{{ env_config.subdomains | selectattr('type', 'equalto', 'A') | list }}"
+      ignore_errors: yes
+
+    - name: Configure subdomain A records
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item.name }}.{{ cloudflare_zone }}"
+        type: A
+        value: "{{ loadbalancer_ip }}"
+        proxied: yes
+        solo: yes
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+      loop: "{{ env_config.subdomains | selectattr('type', 'equalto', 'A') | list }}"
     
     - name: Configure CNAME records
       community.general.cloudflare_dns:
