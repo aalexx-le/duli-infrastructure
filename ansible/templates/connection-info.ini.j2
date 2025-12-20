@@ -9,9 +9,9 @@
 [environment]
 namespace = {{ target_namespace }}
 {% if target_namespace == 'prod' %}
-domain_suffix = duli.one
+domain_suffix = {{ domain_base }}
 {% else %}
-domain_suffix = staging.duli.one
+domain_suffix = {{ target_namespace }}.{{ domain_base }}
 {% endif %}
 
 # ============================================================================
@@ -19,70 +19,124 @@ domain_suffix = staging.duli.one
 # ============================================================================
 
 [backend]
-url = https://api.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+{% if target_namespace == 'prod' %}
+url = https://api.{{ domain_base }}
+{% else %}
+url = https://api.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 
 [ai-service]
-url = https://ai.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+{% if target_namespace == 'prod' %}
+url = https://ai.{{ domain_base }}
+{% else %}
+url = https://ai.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 
 [scheduler]
-url = https://n8n.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+{% if target_namespace == 'prod' %}
+url = https://n8n.{{ domain_base }}
+{% else %}
+url = https://n8n.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 
 [keycloak]
-url = https://auth.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+{% if target_namespace == 'prod' %}
+url = https://auth.{{ domain_base }}
+{% else %}
+url = https://auth.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 
 # ============================================================================
 # INFRASTRUCTURE SERVICES
 # ============================================================================
 
 [postgresql]
-domain = {% if target_namespace == 'staging' %}db.staging.duli.one{% else %}db.duli.one{% endif %}
+{% if target_namespace == 'prod' %}
+domain = db.{{ domain_base }}
+{% else %}
+domain = db.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 port = 5432
 username = {{ postgres_user }}
 password = {{ postgres_pass }}
-database = app
-connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@{% if target_namespace == 'staging' %}db.staging.duli.one{% else %}db.duli.one{% endif %}:5432/app
+database = {{ postgres_db }}
+{% if target_namespace == 'prod' %}
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.{{ domain_base }}:5432/{{ postgres_db }}
+{% else %}
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.{{ target_namespace }}.{{ domain_base }}:5432/{{ postgres_db }}
+{% endif %}
 
 [redis]
-domain = {% if target_namespace == 'staging' %}redis.staging.duli.one{% else %}redis.duli.one{% endif %}
-
+{% if target_namespace == 'prod' %}
+domain = redis.{{ domain_base }}
+{% else %}
+domain = redis.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 port = 6379
 password = {{ redis_password }}
-connection_url = redis://:{{ redis_password }}@{% if target_namespace == 'staging' %}redis.staging.duli.one{% else %}redis.duli.one{% endif %}
+{% if target_namespace == 'prod' %}
+connection_url = redis://:{{ redis_password }}@redis.{{ domain_base }}:6379
+{% else %}
+connection_url = redis://:{{ redis_password }}@redis.{{ target_namespace }}.{{ domain_base }}:6379
+{% endif %}
 
 [rabbitmq]
-amqp_domain = {% if target_namespace == 'staging' %}mq.staging.duli.one{% else %}mq.duli.one{% endif %}
-
+{% if target_namespace == 'prod' %}
+amqp_domain = mq.{{ domain_base }}
+{% else %}
+amqp_domain = mq.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 amqp_port = 5672
 username = {{ rabbitmq_user }}
 password = {{ rabbitmq_pass }}
-management_url = https://queue.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
-connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@{% if target_namespace == 'staging' %}mq.staging.duli.one{% else %}mq.duli.one{% endif %}:5672
+{% if target_namespace == 'prod' %}
+management_url = https://queue.{{ domain_base }}
+connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq.{{ domain_base }}:5672
+{% else %}
+management_url = https://queue.{{ target_namespace }}.{{ domain_base }}
+connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq.{{ target_namespace }}.{{ domain_base }}:5672
+{% endif %}
 
 # ============================================================================
 # GITOPS TOOLS
 # ============================================================================
 
 [argocd]
-url = https://argocd.duli.one
+url = https://argocd.{{ domain_base }}
 
 [rancher]
-url = https://rancher.duli.one
+url = https://rancher.{{ domain_base }}
 
 # ============================================================================
 # USAGE EXAMPLES
 # ============================================================================
 #
 # PostgreSQL:
-#   psql -h {{ 'db.staging.duli.one' if target_namespace == 'staging' else 'db.duli.one' }} -p 5432 -U {{ postgres_user }} -d app
+{% if target_namespace == 'prod' %}
+#   psql -h db.{{ domain_base }} -p 5432 -U {{ postgres_user }} -d {{ postgres_db }}
+{% else %}
+#   psql -h db.{{ target_namespace }}.{{ domain_base }} -p 5432 -U {{ postgres_user }} -d {{ postgres_db }}
+{% endif %}
 #
 # Redis:
-#   redis-cli -h {{ 'redis.staging.duli.one' if target_namespace == 'staging' else 'redis.duli.one' }} -p 6379 -a <password>
+{% if target_namespace == 'prod' %}
+#   redis-cli -h redis.{{ domain_base }} -p 6379 -a <password>
+{% else %}
+#   redis-cli -h redis.{{ target_namespace }}.{{ domain_base }} -p 6379 -a <password>
+{% endif %}
 #
 # RabbitMQ AMQP:
-#   amqp://{{ rabbitmq_user }}:<password>@{{ 'mq.staging.duli.one' if target_namespace == 'staging' else 'mq.duli.one' }}:5672
+{% if target_namespace == 'prod' %}
+#   amqp://{{ rabbitmq_user }}:<password>@mq.{{ domain_base }}:5672
+{% else %}
+#   amqp://{{ rabbitmq_user }}:<password>@mq.{{ target_namespace }}.{{ domain_base }}:5672
+{% endif %}
 #
 # RabbitMQ Management UI:
-#   https://queue.{% if target_namespace == 'staging' %}staging.{% endif %}duli.one
+{% if target_namespace == 'prod' %}
+#   https://queue.{{ domain_base }}
+{% else %}
+#   https://queue.{{ target_namespace }}.{{ domain_base }}
+{% endif %}
 #
 # ============================================================================
-

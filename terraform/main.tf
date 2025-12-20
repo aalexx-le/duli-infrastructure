@@ -7,10 +7,6 @@ terraform {
       source  = "digitalocean/digitalocean"
       version = "~> 2.32"
     }
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 4.52"
-    }
     local = {
       source  = "hashicorp/local"
       version = "~> 2.0"
@@ -22,11 +18,6 @@ terraform {
 provider "digitalocean" {
   token = var.do_token
 }
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
-
 # Project for Kubernetes Cluster
 resource "digitalocean_project" "kubernetes" {
   name        = "duli-kubernetes"
@@ -222,123 +213,4 @@ resource "local_file" "ansible_digitalocean_vars" {
   filename = "${path.module}/../ansible/inventories/group_vars/all/digitalocean.yml"
 
   depends_on = [module.networking]
-}
-
-# ============================================================================
-# CLOUDFLARE ACCESS - WARP AUTHENTICATION
-# ============================================================================
-# Enable WARP authentication on all Access applications
-# This allows secure access to infrastructure services via WARP client
-#
-# NOTE: CORS Configuration
-# When cors_allowed_origins = ["*"] (wildcard), Cloudflare's security policy
-# requires allow_credentials = false. The module automatically handles this
-# by using a ternary condition to set credentials to false for wildcard origins.
-
-module "cloudflare_access_warp" {
-  source = "./modules/cloudflare-access-warp"
-
-  account_id = var.cloudflare_account_id
-
-  applications = [
-    {
-      name                      = "PostgreSQL Staging"
-      domain                    = "db.staging.duli.one"
-      session_duration          = "24h"
-      auto_redirect_to_identity = false
-      enable_binding_cookie     = true
-      skip_interstitial         = false
-      app_launcher_visible      = true
-      service_auth_401_redirect = true
-      custom_deny_message       = "Access denied. Please contact your administrator."
-      cors_allowed_methods      = ["GET", "POST", "OPTIONS"]
-      cors_allowed_origins      = ["*"]
-      cors_allow_credentials    = true
-      cors_max_age              = 86400
-    },
-    {
-      name                      = "Redis Staging"
-      domain                    = "redis.staging.duli.one"
-      session_duration          = "24h"
-      auto_redirect_to_identity = false
-      enable_binding_cookie     = true
-      skip_interstitial         = false
-      app_launcher_visible      = true
-      service_auth_401_redirect = true
-      custom_deny_message       = "Access denied. Please contact your administrator."
-      cors_allowed_methods      = ["GET", "POST", "OPTIONS"]
-      cors_allowed_origins      = ["*"]
-      cors_allow_credentials    = true
-      cors_max_age              = 86400
-    },
-    {
-      name                      = "RabbitMQ Staging"
-      domain                    = "mq.staging.duli.one"
-      session_duration          = "24h"
-      auto_redirect_to_identity = false
-      enable_binding_cookie     = true
-      skip_interstitial         = false
-      app_launcher_visible      = true
-      service_auth_401_redirect = true
-      custom_deny_message       = "Access denied. Please contact your administrator."
-      cors_allowed_methods      = ["GET", "POST", "OPTIONS"]
-      cors_allowed_origins      = ["*"]
-      cors_allow_credentials    = true
-      cors_max_age              = 86400
-    },
-    {
-      name                      = "PostgreSQL Production"
-      domain                    = "db.duli.one"
-      session_duration          = "24h"
-      auto_redirect_to_identity = false
-      enable_binding_cookie     = true
-      skip_interstitial         = false
-      app_launcher_visible      = true
-      service_auth_401_redirect = true
-      custom_deny_message       = "Access denied. Please contact your administrator."
-      cors_allowed_methods      = ["GET", "POST", "OPTIONS"]
-      cors_allowed_origins      = ["*"]
-      cors_allow_credentials    = true
-      cors_max_age              = 86400
-    },
-    {
-      name                      = "Redis Production"
-      domain                    = "redis.duli.one"
-      session_duration          = "24h"
-      auto_redirect_to_identity = false
-      enable_binding_cookie     = true
-      skip_interstitial         = false
-      app_launcher_visible      = true
-      service_auth_401_redirect = true
-      custom_deny_message       = "Access denied. Please contact your administrator."
-      cors_allowed_methods      = ["GET", "POST", "OPTIONS"]
-      cors_allowed_origins      = ["*"]
-      cors_allow_credentials    = true
-      cors_max_age              = 86400
-    },
-    {
-      name                      = "RabbitMQ Production"
-      domain                    = "mq.duli.one"
-      session_duration          = "24h"
-      auto_redirect_to_identity = false
-      enable_binding_cookie     = true
-      skip_interstitial         = false
-      app_launcher_visible      = true
-      service_auth_401_redirect = true
-      custom_deny_message       = "Access denied. Please contact your administrator."
-      cors_allowed_methods      = ["GET", "POST", "OPTIONS"]
-      cors_allowed_origins      = ["*"]
-      cors_allow_credentials    = true
-      cors_max_age              = 86400
-    }
-  ]
-
-  # NOTE: WARP requires account-level WARP session duration to be set first
-  # See setup instructions below
-  enable_warp_on_all = true
-
-  http_only_cookie_attribute    = true
-  same_site_cookie_attribute    = "strict"
-
-  tags = ["terraform-managed", "cloudflare-access-warp"]
 }

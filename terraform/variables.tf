@@ -53,19 +53,3 @@ variable "enable_monitoring" {
   type        = bool
   default     = true
 }
-
-# ============================================================================
-# CLOUDFLARE CONFIGURATION
-# ============================================================================
-
-variable "cloudflare_api_token" {
-  description = "Cloudflare API Token for managing Access applications"
-  type        = string
-  sensitive   = true
-}
-
-variable "cloudflare_account_id" {
-  description = "Cloudflare Account ID"
-  type        = string
-  default     = "9c0d91907036918bc0ae212ed139dd1f"
-}

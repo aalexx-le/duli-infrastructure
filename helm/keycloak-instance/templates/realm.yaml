@@ -19,14 +19,6 @@ spec:
           clientSecret: "${OAUTH_GOOGLE_CLIENT_SECRET}"
           defaultScope: "openid profile email"
 
-      - alias: github
-        providerId: github
-        enabled: true
-        config:
-          clientId: "${OAUTH_GITHUB_CLIENT_ID}"
-          clientSecret: "${OAUTH_GITHUB_CLIENT_SECRET}"
-          defaultScope: "user:email"
-
     # Keycloak Clients for Authentication
     clients:
       # Backend Service Client (Confidential)

@@ -1,16 +1,15 @@
 ---
 # ============================================================================
-# CLOUDFLARE ACCESS CONFIGURATION
+# CLOUDFLARE CONFIGURATION
 # ============================================================================
-# Non-sensitive Cloudflare Access policy configuration.
-# Secrets (API tokens) are stored in vault.yml
-# Other settings (zone, tunnel name) are in setup_cloudflare.yml playbook vars
+# Non-sensitive Cloudflare configuration.
+# Secrets (API tokens, account ID) are stored in vault.yml
+# Tunnel and DNS settings are in setup_cloudflare.yml playbook vars
 # ============================================================================
 
-# Cloudflare Access - Allowed Users/Domains
-# Format:
-#   - "user@example.com" (specific email)
-#   - "@yourdomain.com" (entire domain - allows all emails)
-cloudflare_access_allowed_emails:
-  - "engineer.duli@gmail.com"
-  - "@gmail.com"
+# NOTE: Cloudflare Access Applications are NOT used for TCP services.
+# Authentication for PostgreSQL, Redis, RabbitMQ is handled by:
+#   - WARP client enrollment (warp-cli registration new duli-one)
+#   - Private Network Routes (configured via cloudflared tunnel route ip add)
+#
+# See docs/cloudflare.md for complete WARP setup instructions.

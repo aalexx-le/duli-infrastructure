@@ -39,7 +39,7 @@ spec:
         pathType: {{ .Values.ingress.pathType | default "Prefix" }}
         backend:
           service:
-            name: keycloak-service
+            name: {{ .Release.Name }}
             port:
               number: {{ .Values.service.port | default 8080 }}
 {{- end }}

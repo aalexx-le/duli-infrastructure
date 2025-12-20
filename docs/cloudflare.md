@@ -159,15 +159,7 @@ ansible-vault edit inventories/group_vars/all/vault.yml
 # Add your credentials:
 vault_cloudflare_api_token: "your-api-token-here"
 vault_cloudflare_account_id: "your-account-id-here"
-vault_cloudflare_access_allowed_emails:
-  - "developer@yourcompany.com"
-  - "@yourcompany.com"  # Allow entire domain
 ```
-
-**Cloudflare Access Configuration:**
-- Individual emails: `"user@example.com"`
-- Entire domain: `"@example.com"` (allows all emails from domain)
-- Multiple entries supported
 
 ### Step 2: Deploy Everything
 
@@ -182,31 +174,42 @@ ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 **What happens automatically:**
 1. ✅ Creates Cloudflare Tunnel (`duli-tunnel`)
 2. ✅ Generates tunnel credentials
-3. ✅ Stores credentials in Ansible Vault
+3. ✅ Stores credentials as Kubernetes Secret
 4. ✅ Deploys cloudflared pods (2 replicas)
-5. ✅ Configures DNS records
+5. ✅ Configures DNS records (CNAME for HTTPS, Tunnel for TCP)
 6. ✅ Sets SSL to Full (Strict)
-7. ✅ Enables security features
-8. ✅ **Creates Cloudflare Access applications**
-9. ✅ **Configures Zero Trust policies**
-10. ✅ **Enables SSO authentication for TCP services**
+7. ✅ Enables TLS 1.2+, TLS 1.3, Always HTTPS, Automatic HTTPS Rewrites
 
 ---
 
 ## Domain Structure
 
-### Application Services (HTTPS)
+### Application Services (HTTPS via ingress-nginx)
 
-| Domain | Service | Type | Description |
-|--------|---------|------|-------------|
-| api.duli.one | backend | HTTPS | Backend API service |
-| ai.duli.one | ai-service | HTTPS | AI/ML service |
-| n8n.duli.one | scheduler | HTTPS | n8n workflow automation |
-| auth.duli.one | keycloak | HTTPS | Authentication (Keycloak) |
-| argocd.duli.one | argocd-server | HTTPS | ArgoCD GitOps UI |
-| rancher.duli.one | rancher | HTTPS | Rancher cluster management |
+**Production:**
+| Domain | Service | Description |
+|--------|---------|-------------|
+| api.duli.one | backend | Backend API service |
+| ai.duli.one | ai-service | AI/ML service |
+| n8n.duli.one | scheduler | n8n workflow automation |
+| auth.duli.one | keycloak | Authentication (Keycloak) |
 
-### Infrastructure Services (TCP via Tunnel)
+**Staging:**
+| Domain | Service | Description |
+|--------|---------|-------------|
+| api.staging.duli.one | backend | Backend API service |
+| ai.staging.duli.one | ai-service | AI/ML service |
+| n8n.staging.duli.one | scheduler | n8n workflow automation |
+| auth.staging.duli.one | keycloak | Authentication (Keycloak) |
+
+### Cluster-Wide Management (HTTPS via ingress-nginx)
+
+| Domain | Service | Description |
+|--------|---------|-------------|
+| argocd.duli.one | argocd-server | ArgoCD GitOps UI |
+| rancher.duli.one | rancher | Rancher cluster management |
+
+### Infrastructure Services (TCP via Cloudflare Tunnel)
 
 **Production:**
 | Domain | Service | Port | Protocol |
@@ -214,6 +217,7 @@ ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 | db.duli.one | PostgreSQL | 5432 | TCP |
 | redis.duli.one | Redis | 6379 | TCP |
 | mq.duli.one | RabbitMQ AMQP | 5672 | TCP |
+| queue.duli.one | RabbitMQ Mgmt | 15672 | HTTPS |
 
 **Staging:**
 | Domain | Service | Port | Protocol |
@@ -221,13 +225,7 @@ ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 | db.staging.duli.one | PostgreSQL | 5432 | TCP |
 | redis.staging.duli.one | Redis | 6379 | TCP |
 | mq.staging.duli.one | RabbitMQ AMQP | 5672 | TCP |
-
-### Management UIs (HTTPS)
-
-| Domain | Service | Description |
-|--------|---------|-------------|
-| queue.duli.one | RabbitMQ Mgmt | Production management UI |
-| queue.staging.duli.one | RabbitMQ Mgmt | Staging management UI |
+| queue.staging.duli.one | RabbitMQ Mgmt | 15672 | HTTPS |
 
 ---
 
@@ -263,11 +261,8 @@ cloudflared tunnel create duli-tunnel
 # List tunnels to get ID
 cloudflared tunnel list
 
-# Add credentials to vault
-ansible-vault edit inventories/group_vars/all/vault.yml
-# Add:
-# vault_cloudflare_tunnel_id: "your-tunnel-uuid"
-# vault_cloudflare_tunnel_secret: "your-tunnel-secret"
+# Tunnel credentials are auto-generated and stored in ~/.cloudflared/
+# No manual vault configuration needed for tunnel secrets
 ```
 
 ---
@@ -538,87 +533,15 @@ kubectl get clusterissuer
 ### Re-run Configuration
 
 ```bash
-# Re-run Cloudflare DNS/SSL setup
-ansible-playbook -i inventories/hosts.ini playbooks/configure_cloudflare.yml
-
-# Re-deploy cloudflared
-ansible-playbook -i inventories/hosts.ini playbooks/install_cloudflared.yml
+# Re-run Cloudflare setup (Tunnel + DNS + SSL)
+ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 ```
 
 ---
 
 ## Security Best Practices
 
-### 1. Access Policies (Auto-Configured)
-
-Cloudflare Access policies are **automatically provisioned** during deployment:
-
-**Default Configuration:**
-- ✅ Email-based authentication (configured in vault.yml)
-- ✅ 24-hour session duration
-- ✅ Per-service access control
-- ✅ Audit logging enabled
-
-**Customizing Policies:**
-
-If you need to modify access policies after deployment:
-
-1. Go to [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
-2. **Access** → **Applications** → Select application (e.g., "PostgreSQL Staging")
-3. **Policies** → **Edit**
-4. Modify rules:
-   - **Email domains**: Change `@yourcompany.com` to your domain
-   - **SSO providers**: Add Google, GitHub, Azure AD, Okta
-   - **IP restrictions**: Limit access by country or IP range
-   - **Device posture**: Require managed devices
-
-**Example: Add SSO Provider (Google Workspace):**
-
-```bash
-# Via Cloudflare dashboard (recommended):
-# Settings → Authentication → Login methods → Add Google Workspace
-# Configure: Client ID, Client Secret, Domain
-
-# Or via Ansible (add to playbook):
-- name: Configure SSO provider
-  uri:
-    url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/identity_providers"
-    method: POST
-    body:
-      type: "google-apps"
-      config:
-        client_id: "{{ vault_google_oauth_client_id }}"
-        client_secret: "{{ vault_google_oauth_client_secret }}"
-        apps_domain: "yourcompany.com"
-```
-
-### 2. Audit Logs
-
-Monitor all access attempts and connections:
-
-**View Access Logs:**
-1. Go to [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
-2. **Logs** → **Access** → View recent authentication events
-
-**Log Information Includes:**
-- ✅ User email and IP address
-- ✅ Service accessed (db.staging.duli.one, redis.staging.duli.one, etc.)
-- ✅ Authentication method (email, SSO, WARP)
-- ✅ Timestamp and session duration
-- ✅ Allow/deny decisions
-
-**Export Logs (for SIEM integration):**
-```bash
-# Via API (example with jq)
-curl -X GET "https://api.cloudflare.com/client/v4/accounts/{{ account_id }}/access/logs/access_requests" \
-  -H "Authorization: Bearer {{ api_token }}" | jq .
-```
-
-**Set up Alerts:**
-- **Settings** → **Notifications** → **Add notification**
-- Alert on: Failed login attempts, unusual access patterns
-
-### 3. Rotate Credentials
+### 1. Rotate Credentials
 
 **Tunnel Credentials:**
 ```bash
@@ -633,9 +556,8 @@ ansible-vault edit inventories/group_vars/all/vault.yml
 ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 ```
 
-**Access Policies:**
+**API Token:**
 ```bash
-# Rotate API token
 # 1. Create new token at: https://dash.cloudflare.com/profile/api-tokens
 # 2. Update vault.yml
 ansible-vault edit inventories/group_vars/all/vault.yml
@@ -643,7 +565,7 @@ ansible-vault edit inventories/group_vars/all/vault.yml
 ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 ```
 
-### 4. Network Isolation
+### 2. Network Isolation
 
 **Kubernetes Network Policies:**
 
@@ -680,6 +602,37 @@ spec:
 - ✅ Services not exposed via NodePort/LoadBalancer
 - ✅ Direct pod access blocked by network policies
 - ✅ All traffic authenticated and encrypted via Cloudflare tunnel
+
+---
+
+## Accessing TCP Services
+
+There are two methods to access TCP services (Database, Redis, RabbitMQ):
+
+### Method 1: Hostname Access (Requires cloudflared)
+Requires `cloudflared access tcp` command to bridge the connection. Use this for programmatic access or if you cannot use WARP.
+
+```bash
+# Example: Connect to Staging DB
+cloudflared access tcp --hostname db.staging.duli.one --url localhost:5432 &
+psql -h localhost -p 5432 -U duli_user -d duli_db
+```
+
+### Method 2: Direct ClusterIP (Requires WARP)
+The simplest method if you have WARP client installed and connected.
+
+1. Connect WARP client
+2. Use the **Service ClusterIP** directly (found in `connection-info-staging.ini` or via kubectl)
+
+```bash
+# Get ClusterIP
+kubectl get svc -n staging database-rw
+
+# Connect directly
+psql -h 10.233.x.x -p 5432 -U duli_user -d duli_db
+```
+
+> **Note:** Hostname-based access via WARP DNS (e.g. `psql -h db.staging.duli.one`) requires configuring "Local Domain Fallback" or Gateway DNS policies in Cloudflare Zero Trust dashboard, which is not enabled by default.
 
 ---
 

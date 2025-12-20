@@ -2,13 +2,18 @@
 - name: Export infrastructure connection information
   hosts: localhost
   connection: local
+  vars:
+    supported_environments:
+      - staging
+      - prod
   tasks:
     - name: Validate target_environment variable
       assert:
         that:
           - target_environment is defined
-          - target_environment in ['staging', 'prod']
-        fail_msg: "Use: -e target_environment=staging or -e target_environment=prod"
+          - target_environment | length > 0
+          - target_environment in supported_environments
+        fail_msg: "target_environment variable is required. Use: -e target_environment=staging or -e target_environment=prod"
 
     - name: Set target namespace
       set_fact:
@@ -48,6 +53,7 @@
       set_fact:
         postgres_user: "{{ postgres_secret.resources[0].data.username | b64decode }}"
         postgres_pass: "{{ postgres_secret.resources[0].data.password | b64decode }}"
+        postgres_db: "{{ postgres_secret.resources[0].data.dbname | b64decode }}"
         redis_password: "{{ redis_secret.resources[0].data.password | b64decode }}"
         rabbitmq_user: "{{ rabbitmq_secret.resources[0].data.username | b64decode }}"
         rabbitmq_pass: "{{ rabbitmq_secret.resources[0].data.password | b64decode }}"
