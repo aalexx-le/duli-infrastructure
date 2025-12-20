@@ -41,7 +41,6 @@
       loop:
         - redis
         - postgres
-        - rabbitmq
       failed_when: not sealed_secret_files.stat.exists
 
 
