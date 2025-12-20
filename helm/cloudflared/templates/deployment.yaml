@@ -43,6 +43,8 @@ spec:
             - tunnel
             # Points cloudflared to the config file, which configures what
             # cloudflared will actually do. This file is created by a ConfigMap.
+            # Note: If remote config exists in Cloudflare dashboard, it will override local config.
+            # To use local config, delete remote config in Zero Trust dashboard or update it via API.
             - --config
             - /etc/cloudflared/config/config.yaml
             {{- if .Values.cloudflare.edgeIPVersion }}

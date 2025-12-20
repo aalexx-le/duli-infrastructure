@@ -5,7 +5,7 @@ keycloak:
   db:
     vendor: postgres
     host: database-rw.staging.svc.cluster.local
-    secretName: database-app
+    secretName: keycloak-db-credentials
   tls:
     enabled: false
   # Proxy configuration - replaces deprecated 'proxy' option

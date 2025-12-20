@@ -22,6 +22,13 @@
     tunnel_name: "duli-tunnel"
     helm_chart_path: "{{ playbook_dir }}/../../helm/cloudflared"
     
+    # Shared infrastructure subdomains - always configured regardless of environment
+    shared_subdomains:
+      - name: "argocd"
+        type: "A"
+      - name: "rancher"
+        type: "A"
+    
     # Environment-specific configurations
     env_configs:
       staging:
@@ -53,10 +60,6 @@
           - name: "n8n"
             type: "A"
           - name: "auth"
-            type: "A"
-          - name: "argocd"
-            type: "A"
-          - name: "rancher"
             type: "A"
           - name: "queue"
             type: "A"
@@ -272,6 +275,16 @@
         state: present
       when: target_environment == 'prod'
     
+    - name: Delete existing CNAME records for shared infrastructure subdomains
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item.name }}.{{ cloudflare_zone }}"
+        type: CNAME
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: absent
+      loop: "{{ shared_subdomains | selectattr('type', 'equalto', 'A') | list }}"
+      ignore_errors: yes
+
     - name: Delete existing CNAME records for A record subdomains
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
@@ -282,7 +295,19 @@
       loop: "{{ env_config.subdomains | selectattr('type', 'equalto', 'A') | list }}"
       ignore_errors: yes
 
-    - name: Configure subdomain A records
+    - name: Configure shared infrastructure A records - ArgoCD, Rancher
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item.name }}.{{ cloudflare_zone }}"
+        type: A
+        value: "{{ loadbalancer_ip }}"
+        proxied: yes
+        solo: yes
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+      loop: "{{ shared_subdomains | selectattr('type', 'equalto', 'A') | list }}"
+
+    - name: Configure environment subdomain A records
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
         record: "{{ item.name }}.{{ cloudflare_zone }}"
@@ -376,15 +401,363 @@
         body:
           value: "on"
         status_code: [200]
-    
+
+    # ========================================================================
+    # ZERO TRUST ACCESS APPLICATIONS FOR TCP SERVICES
+    # ========================================================================
+    # Create Access Applications for PostgreSQL, Redis, RabbitMQ so that
+    # WARP-enrolled users can connect via TCP.
+    # ========================================================================
+
+    - name: Set TCP service hostnames based on environment
+      set_fact:
+        db_hostname: "{{ 'db-staging' if target_environment == 'staging' else 'db' }}.{{ cloudflare_zone }}"
+        redis_hostname: "{{ 'redis-staging' if target_environment == 'staging' else 'redis' }}.{{ cloudflare_zone }}"
+        mq_hostname: "{{ 'mq-staging' if target_environment == 'staging' else 'mq' }}.{{ cloudflare_zone }}"
+
+    - name: Define TCP Access Applications
+      set_fact:
+        tcp_applications:
+          - name: "PostgreSQL {{ target_environment | capitalize }}"
+            domain: "{{ db_hostname }}"
+            type: "self_hosted"
+            session_duration: "24h"
+          - name: "Redis {{ target_environment | capitalize }}"
+            domain: "{{ redis_hostname }}"
+            type: "self_hosted"
+            session_duration: "24h"
+          - name: "RabbitMQ {{ target_environment | capitalize }}"
+            domain: "{{ mq_hostname }}"
+            type: "self_hosted"
+            session_duration: "24h"
+
+    - name: Get existing Access Applications
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        status_code: [200]
+      register: existing_apps
+
+    - name: Create Access Applications for TCP services
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ item.name }}"
+          domain: "{{ item.domain }}"
+          type: "{{ item.type }}"
+          session_duration: "{{ item.session_duration }}"
+          auto_redirect_to_identity: false
+          app_launcher_visible: true
+          allowed_idps: []
+        status_code: [200, 201]
+      loop: "{{ tcp_applications }}"
+      when: existing_apps.json.result | selectattr('domain', 'equalto', item.domain) | list | length == 0
+      register: created_apps
+
+    - name: Get Access Application IDs
+      set_fact:
+        app_ids: "{{ app_ids | default({}) | combine({item.domain: (existing_apps.json.result | selectattr('domain', 'equalto', item.domain) | first).id}) }}"
+      loop: "{{ tcp_applications }}"
+      when: existing_apps.json.result | selectattr('domain', 'equalto', item.domain) | list | length > 0
+
+    - name: Get created Application IDs
+      set_fact:
+        app_ids: "{{ app_ids | default({}) | combine({item.item.domain: item.json.result.id}) }}"
+      loop: "{{ created_apps.results | selectattr('skipped', 'undefined') | list }}"
+      when: created_apps is defined and item.json is defined
+
+    - name: Check existing policies for each app
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps/{{ app_ids[item.domain] }}/policies"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        status_code: [200]
+      loop: "{{ tcp_applications }}"
+      when: app_ids[item.domain] is defined
+      register: existing_policies
+
+    - name: Create Access Policy (Allow any valid email)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps/{{ app_ids[item.item.domain] }}/policies"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "Allow authenticated users"
+          decision: "allow"
+          include:
+            - email_domain:
+                domain: "gmail.com"
+          precedence: 1
+        status_code: [200, 201]
+      loop: "{{ existing_policies.results }}"
+      when: >
+        item.json is defined and
+        item.json.result | length == 0
+      register: created_policies
+
+    # ========================================================================
+    # SPLIT TUNNEL CONFIGURATION FOR HOSTNAME-BASED TCP ACCESS
+    # ========================================================================
+    # Configure WARP Split Tunnel to route duli.one domains through tunnel.
+    # This enables hostname-based access like: psql -h db-staging.duli.one
+    # ========================================================================
+
+    - name: Get current split tunnel include list
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/devices/policy/include"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        status_code: [200, 403]
+      register: current_split_include
+
+    - name: Define required split tunnel entries for TCP services
+      set_fact:
+        required_split_entries:
+          - address: "{{ db_hostname }}"
+            description: "PostgreSQL {{ target_environment }}"
+          - address: "{{ redis_hostname }}"
+            description: "Redis {{ target_environment }}"
+          - address: "{{ mq_hostname }}"
+            description: "RabbitMQ {{ target_environment }}"
+          - address: "*.cfargotunnel.com"
+            description: "Cloudflare Tunnel endpoints"
+      when: current_split_include.status == 200
+
+    - name: Check which entries need to be added
+      set_fact:
+        existing_addresses: "{{ (current_split_include.json.result or []) | map(attribute='address') | list }}"
+      when: current_split_include.status == 200
+
+    - name: Add split tunnel include entries for TCP domains
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/devices/policy/include"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ (current_split_include.json.result or []) + (required_split_entries | rejectattr('address', 'in', existing_addresses) | list) }}"
+        status_code: [200]
+      when: >
+        current_split_include.status == 200 and
+        required_split_entries | rejectattr('address', 'in', existing_addresses) | list | length > 0
+      register: split_tunnel_result
+
+    - name: Display split tunnel update result
+      debug:
+        msg: "Split tunnel configured for: {{ required_split_entries | map(attribute='address') | join(', ') }}"
+      when: current_split_include.status == 200
+
+    # ========================================================================
+    # LOCAL DOMAIN FALLBACK FOR DNS RESOLUTION
+    # ========================================================================
+    # Configure fallback domains so WARP resolves duli.one through tunnel DNS
+    # ========================================================================
+
+    - name: Get current fallback domains
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/devices/policy/fallback_domains"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        status_code: [200, 403]
+      register: current_fallback_domains
+
+    - name: Define required fallback domains
+      set_fact:
+        required_fallback_domains:
+          - suffix: "{{ cloudflare_zone }}"
+            description: "Route all duli.one subdomains through tunnel DNS"
+      when: current_fallback_domains.status == 200
+
+    - name: Check existing fallback domain suffixes
+      set_fact:
+        existing_fallback_suffixes: "{{ (current_fallback_domains.json.result or []) | map(attribute='suffix') | list }}"
+      when: current_fallback_domains.status == 200
+
+    - name: Add fallback domains for duli.one
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/devices/policy/fallback_domains"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ (current_fallback_domains.json.result or []) + (required_fallback_domains | rejectattr('suffix', 'in', existing_fallback_suffixes) | list) }}"
+        status_code: [200]
+      when: >
+        current_fallback_domains.status == 200 and
+        required_fallback_domains | rejectattr('suffix', 'in', existing_fallback_suffixes) | list | length > 0
+      register: fallback_domains_result
+
+    - name: Display fallback domains result
+      debug:
+        msg: "Fallback domains configured for: {{ cloudflare_zone }}"
+      when: current_fallback_domains.status == 200
+
+    - name: Display device policy permission warning
+      debug:
+        msg: |
+          ⚠️  WARNING: API token missing 'Devices' permission.
+          
+          To enable hostname-based TCP access (psql -h db-staging.duli.one), 
+          add the following permission to your API token:
+            - Account - Zero Trust: Devices - Edit
+          
+          Or configure manually in Zero Trust dashboard:
+            1. Go to Settings → WARP Client → Device Settings
+            2. Add Split Tunnel Include: {{ db_hostname }}, {{ redis_hostname }}, {{ mq_hostname }}
+            3. Add Fallback Domain: {{ cloudflare_zone }}
+      when: current_split_include.status == 403 or current_fallback_domains.status == 403
+
+    # ========================================================================
+    # PRIVATE NETWORK ROUTES FOR WARP CLIENTS
+    # ========================================================================
+    # Note: warp-routing.enabled is DEPRECATED since cloudflared 2023.9.0
+    # WARP routing is now automatically enabled when Private Network Routes
+    # are configured via the /teamnet/routes API.
+    # ========================================================================
+
+    - name: Get existing Virtual Networks
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/teamnet/virtual_networks"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        status_code: [200]
+      register: virtual_networks
+
+    - name: Check if default virtual network exists
+      set_fact:
+        default_vnet_id: "{{ (virtual_networks.json.result | selectattr('is_default_network', 'equalto', true) | first).id | default('') }}"
+      when: virtual_networks.json.result | length > 0
+
+    - name: Create default Virtual Network if not exists
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/teamnet/virtual_networks"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "duli-network"
+          comment: "Default network for Duli Kubernetes cluster"
+          is_default: true
+        status_code: [200, 201]
+      register: create_vnet_result
+      when: default_vnet_id | default('') == ''
+
+    - name: Set virtual network ID
+      set_fact:
+        vnet_id: "{{ default_vnet_id | default(create_vnet_result.json.result.id | default('')) }}"
+
+    - name: Get existing tunnel routes
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/teamnet/routes?tunnel_id={{ tunnel_id }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+        status_code: [200]
+      register: existing_routes
+
+    - name: Check if Pod CIDR route exists
+      set_fact:
+        pod_cidr_route_exists: "{{ existing_routes.json.result | selectattr('network', 'equalto', '10.233.64.0/18') | list | length > 0 }}"
+
+    - name: Add Private Network route for Pod CIDR
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/teamnet/routes"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          network: "10.233.64.0/18"
+          tunnel_id: "{{ tunnel_id }}"
+          comment: "Kubernetes Pod CIDR for {{ target_environment }}"
+        status_code: [200, 201]
+      when: not pod_cidr_route_exists
+      register: pod_route_result
+
+    - name: Check if Service CIDR route exists
+      set_fact:
+        svc_cidr_route_exists: "{{ existing_routes.json.result | selectattr('network', 'equalto', '10.233.0.0/18') | list | length > 0 }}"
+
+    - name: Add Private Network route for Service CIDR
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/teamnet/routes"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          network: "10.233.0.0/18"
+          tunnel_id: "{{ tunnel_id }}"
+          comment: "Kubernetes Service CIDR for {{ target_environment }}"
+        status_code: [200, 201]
+      when: not svc_cidr_route_exists
+      register: svc_route_result
+
+    - name: Restart cloudflared to pick up new config
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: cloudflared-cloudflare-tunnel
+            namespace: "{{ cloudflared_namespace }}"
+            annotations:
+              kubectl.kubernetes.io/restartedAt: "{{ ansible_date_time.iso8601 }}"
+        merge_type: strategic-merge
+      register: restart_result
+
+    - name: Wait for cloudflared pods to restart
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ cloudflared_namespace }}"
+        label_selectors:
+          - app.kubernetes.io/name=cloudflare-tunnel
+      register: cloudflared_pods_restart
+      until: >
+        cloudflared_pods_restart.resources | length > 0 and
+        cloudflared_pods_restart.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == cloudflared_pods_restart.resources | length
+      retries: 30
+      delay: 10
+
     - name: Display deployment summary
       debug:
         msg: |
           ✓ Environment: {{ target_environment }}
           ✓ Namespace: {{ cloudflared_namespace }}
           ✓ Tunnel: {{ tunnel_name }} ({{ tunnel_id }})
-          ✓ Replicas: {{ cloudflared_pods.resources | length }}
+          ✓ Replicas: {{ cloudflared_pods_restart.resources | length }}
           ✓ LoadBalancer: {{ loadbalancer_ip }}
           ✓ SSL: Full (Strict), TLS 1.2+
+          ✓ Split Tunnel: Configured for {{ db_hostname }}, {{ redis_hostname }}, {{ mq_hostname }}
+          ✓ Fallback Domains: {{ cloudflare_zone }}
+          ✓ Private Network Routes: Pod CIDR, Service CIDR
+          ✓ Zero Trust Access Applications: Created for TCP services
           
-          See docs/cloudflare.md for complete domain structure and access instructions.
+          TCP Services (via WARP + Tunnel):
+            With WARP client enrolled (duli-one), connect directly:
+            - psql -h {{ db_hostname }} -p 5432 -U duli_user -d duli_db
+            - redis-cli -h {{ redis_hostname }} -p 6379
+            - amqp://user:pass@{{ mq_hostname }}:5672
+          
+          See docs/cloudflare.md for complete access instructions.
