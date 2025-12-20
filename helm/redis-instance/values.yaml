@@ -21,7 +21,7 @@ redis:
 
   storage:
     size: 5Gi # Increased from 1Gi to match old setup
-    storageClassName: standard
+    storageClassName: do-block-storage
 
   # Service configuration for external access
   # Use LoadBalancer for production, NodePort for staging
@@ -29,5 +29,5 @@ redis:
     type: LoadBalancer # Default: LoadBalancer (override to NodePort in values-staging.yaml)
 
   redisSecret:
-    name: ""
-    key: ""
+    name: redis-credentials
+    key: password

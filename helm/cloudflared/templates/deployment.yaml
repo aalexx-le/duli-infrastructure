@@ -45,6 +45,12 @@ spec:
             # cloudflared will actually do. This file is created by a ConfigMap.
             - --config
             - /etc/cloudflared/config/config.yaml
+            {{- if .Values.cloudflare.edgeIPVersion }}
+            {{- if ne .Values.cloudflare.edgeIPVersion "auto" }}
+            - --edge-ip-version
+            - {{ .Values.cloudflare.edgeIPVersion | quote }}
+            {{- end }}
+            {{- end }}
             - run
           livenessProbe:
             httpGet:

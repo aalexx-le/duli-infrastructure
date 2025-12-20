@@ -15,13 +15,19 @@ spec:
       name: {{ .Values.keycloak.db.secretName }}
       key: password
   http:
-    relativePath: /
+    httpEnabled: true  # Allow HTTP traffic (TLS handled by ingress)
+    httpsPort: 8443
   hostname:
     hostname: {{ .Values.keycloak.hostname }}
     strict: false
-  startOptimized: false
-  additionalOptions:
-  - name: proxy-headers
-    value: {{ .Values.keycloak.proxy.headers | quote }}
-  - name: proxy-mode
-    value: {{ .Values.keycloak.proxy.mode | quote }}
+  proxy:
+    headers: {{ .Values.keycloak.proxy.headers }}
+  unsupported:
+    podTemplate:
+      spec:
+        containers:
+        - env:
+          - name: KC_HTTP_ENABLED
+            value: "true"
+          - name: KC_HOSTNAME_STRICT_HTTPS
+            value: "false"

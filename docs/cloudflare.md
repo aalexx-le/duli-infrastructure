@@ -126,9 +126,13 @@ Create an API token with the following permissions:
 4. Configure:
    - **Token name**: `duli-k8s-automation`
    - **Permissions**:
+     - Account - Cloudflare Tunnel - Edit
+     - Account - Access: Apps and Policies - Edit
      - Zone - Zone - Read
      - Zone - DNS - Edit
      - Zone - Zone Settings - Edit
+   - **Account Resources**:
+     - Include - [Your Account] - All accounts
    - **Zone Resources**:
      - Include - Specific zone - `duli.one`
 5. Click **Continue to summary** → **Create Token**
@@ -155,7 +159,15 @@ ansible-vault edit inventories/group_vars/all/vault.yml
 # Add your credentials:
 vault_cloudflare_api_token: "your-api-token-here"
 vault_cloudflare_account_id: "your-account-id-here"
+vault_cloudflare_access_allowed_emails:
+  - "developer@yourcompany.com"
+  - "@yourcompany.com"  # Allow entire domain
 ```
+
+**Cloudflare Access Configuration:**
+- Individual emails: `"user@example.com"`
+- Entire domain: `"@example.com"` (allows all emails from domain)
+- Multiple entries supported
 
 ### Step 2: Deploy Everything
 
@@ -175,6 +187,9 @@ ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 5. ✅ Configures DNS records
 6. ✅ Sets SSL to Full (Strict)
 7. ✅ Enables security features
+8. ✅ **Creates Cloudflare Access applications**
+9. ✅ **Configures Zero Trust policies**
+10. ✅ **Enables SSO authentication for TCP services**
 
 ---
 
@@ -292,11 +307,44 @@ Ansible configures:
 
 ## Access Configuration
 
+### Automated Setup (Included in Deployment)
+
+Cloudflare Access is **automatically provisioned** by the Ansible playbook. Zero Trust security is configured out-of-the-box with:
+
+- ✅ Access applications for all TCP services (PostgreSQL, Redis, RabbitMQ)
+- ✅ Email-based authentication policies
+- ✅ 24-hour session duration
+- ✅ SSO integration ready (Google, GitHub, Azure AD, Okta)
+
 ### For Developers: Accessing Infrastructure Services
 
-Developers can connect directly to infrastructure services using domain names - **no commands, no port-forwarding, just connect!**
+Developers can connect directly to infrastructure services using domain names after **enrolling with WARP**.
 
-#### Direct Connection (Zero Manual Steps)
+#### Prerequisites: WARP Client Enrollment (Required)
+
+To access TCP services, you must enroll your device with Cloudflare Zero Trust.
+
+📖 **See detailed guide:** [WARP Enrollment Guide](warp-enrollment-guide.md)
+
+**Quick Enrollment Steps:**
+
+1. **Install WARP client** (if not installed)  
+   Download: https://1.1.1.1/
+
+2. **Enroll with your organization:**
+   ```bash
+   warp-cli registration new <YOUR_TEAM_NAME>
+   ```
+
+3. **Authenticate in browser** (engineer.duli@gmail.com or @gmail.com domain)
+
+4. **Verify enrollment:**
+   ```bash
+   warp-cli registration show
+   # Should show your team name and email
+   ```
+
+#### Direct Connection (After WARP Enrollment)
 
 **PostgreSQL (Staging):**
 ```bash
@@ -322,41 +370,118 @@ amqp://user:pass@mq.staging.duli.one:5672
 https://queue.staging.duli.one
 ```
 
-#### How It Works
+### Cloudflare WARP Client (Required for TCP Access)
 
-1. **First-time setup** (automatic, browser-based):
-   - Visit any infrastructure domain (e.g., `db.staging.duli.one`)
-   - Cloudflare Access shows login page
-   - Authenticate with Google/GitHub (SSO)
-   - Access granted automatically
+**Important:** WARP client enrollment is **required** to access TCP services (PostgreSQL, Redis, RabbitMQ) directly.
 
-2. **After authentication**:
-   - All infrastructure services accessible via domains
-   - No VPN, no port-forwarding, no commands
-   - Works from anywhere (home, office, mobile)
+📖 **Complete enrollment guide:** [WARP Enrollment Guide](warp-enrollment-guide.md)
 
-3. **Cloudflare WARP** (optional, for better performance):
-   - Install once: [WARP Client](https://developers.cloudflare.com/cloudflare-one/connections/connect-devices/warp/)
-   - Automatic background connection
-   - Faster than browser-based auth
+**Why use WARP?**
+- ✅ **Required** for direct TCP access to infrastructure services
+- ✅ Automatic authentication via Cloudflare Zero Trust
+- ✅ Faster connection speeds via Cloudflare's global network
+- ✅ Works on mobile devices (iOS, Android)
+- ✅ Seamless switching between networks (WiFi, mobile data)
+- ✅ Zero Trust security enforced on all connections
+
+#### Installation
+
+**macOS:**
+```bash
+# Download from Cloudflare
+open https://install.appcenter.ms/orgs/cloudflare/apps/1.1.1.1-macos-1/distribution_groups/release
+
+# Or via Homebrew
+brew install --cask cloudflare-warp
+```
+
+**Windows:**
+```powershell
+# Download installer
+Start-Process "https://install.appcenter.ms/orgs/cloudflare/apps/1.1.1.1-windows-1/distribution_groups/release"
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+# Add Cloudflare repository
+curl https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+
+# Install
+sudo apt update && sudo apt install cloudflare-warp
+```
+
+**iOS/Android:**
+- Search for "1.1.1.1: Faster Internet" in App Store/Play Store
+- Install and enable WARP
+
+#### Enrollment (Connect to Zero Trust Organization)
+
+**CORRECT COMMAND:**
+
+```bash
+# macOS/Linux - Enroll with your organization
+warp-cli registration new <YOUR_TEAM_NAME>
+
+# Example (replace with your actual team name):
+warp-cli registration new duli-ai
+
+# Browser will open for authentication
+# Login with: engineer.duli@gmail.com or any @gmail.com email
+
+# Verify enrollment
+warp-cli registration show
+# Should display your organization name and email
+
+# Check status
+warp-cli status
+# Should show: Status: Connected
+```
+
+**Or via GUI:**
+1. Click WARP icon in menu bar
+2. Go to Settings → Preferences → Account
+3. Click "Login with Cloudflare Zero Trust"
+4. Enter your team name
+5. Authenticate in browser
+
+3. **Authenticate**:
+   - Enter your company email
+   - Complete email verification
+   - WARP automatically handles all TCP connections
+
+4. **Verify connection**:
+   ```bash
+   # Test direct database access (no browser popup!)
+   psql -h db.staging.duli.one -p 5432 -U duli_user
+   ```
 
 **What happens automatically:**
 - ✅ DNS resolves to Cloudflare Tunnel
-- ✅ Cloudflare authenticates via SSO
+- ✅ WARP client authenticates via Zero Trust
 - ✅ Traffic encrypted end-to-end
-- ✅ Connection routed to Kubernetes service
-- ✅ Zero Trust security applied
+- ✅ Connection routed through nearest Cloudflare datacenter
+- ✅ Zero Trust security policies applied
+- ✅ Works from anywhere (home, office, mobile, airports)
 
 ---
 
-#### Alternative: kubectl port-forward (No Internet Required)
+#### Legacy Method: kubectl port-forward (Not Recommended)
 
-If you need offline access or prefer traditional approach:
+⚠️ **Deprecated**: Port-forwarding is no longer needed with Cloudflare Access.
+
+This method is only for emergency offline access:
 
 ```bash
 kubectl port-forward -n staging svc/database-rw 5432:5432
 psql -h localhost -p 5432 -U duli_user
 ```
+
+**Limitations:**
+- Requires kubectl access and VPN
+- Requires manual setup for each service
+- Doesn't work from mobile devices
+- No audit logging or SSO authentication
 
 ---
 
@@ -424,31 +549,137 @@ ansible-playbook -i inventories/hosts.ini playbooks/install_cloudflared.yml
 
 ## Security Best Practices
 
-### 1. Access Policies
+### 1. Access Policies (Auto-Configured)
 
-Configure Cloudflare Access policies to restrict who can access infrastructure services:
+Cloudflare Access policies are **automatically provisioned** during deployment:
+
+**Default Configuration:**
+- ✅ Email-based authentication (configured in vault.yml)
+- ✅ 24-hour session duration
+- ✅ Per-service access control
+- ✅ Audit logging enabled
+
+**Customizing Policies:**
+
+If you need to modify access policies after deployment:
 
 1. Go to [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
-2. **Access** → **Applications** → **Add an application**
-3. Configure:
-   - **Application name**: PostgreSQL Staging
-   - **Application domain**: `db.staging.duli.one`
-   - **Policy**: Allow emails from `@yourcompany.com`
+2. **Access** → **Applications** → Select application (e.g., "PostgreSQL Staging")
+3. **Policies** → **Edit**
+4. Modify rules:
+   - **Email domains**: Change `@yourcompany.com` to your domain
+   - **SSO providers**: Add Google, GitHub, Azure AD, Okta
+   - **IP restrictions**: Limit access by country or IP range
+   - **Device posture**: Require managed devices
+
+**Example: Add SSO Provider (Google Workspace):**
+
+```bash
+# Via Cloudflare dashboard (recommended):
+# Settings → Authentication → Login methods → Add Google Workspace
+# Configure: Client ID, Client Secret, Domain
+
+# Or via Ansible (add to playbook):
+- name: Configure SSO provider
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/identity_providers"
+    method: POST
+    body:
+      type: "google-apps"
+      config:
+        client_id: "{{ vault_google_oauth_client_id }}"
+        client_secret: "{{ vault_google_oauth_client_secret }}"
+        apps_domain: "yourcompany.com"
+```
 
 ### 2. Audit Logs
 
-Monitor access in Cloudflare:
-- **Zero Trust** → **Logs** → **Access**
+Monitor all access attempts and connections:
+
+**View Access Logs:**
+1. Go to [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
+2. **Logs** → **Access** → View recent authentication events
+
+**Log Information Includes:**
+- ✅ User email and IP address
+- ✅ Service accessed (db.staging.duli.one, redis.staging.duli.one, etc.)
+- ✅ Authentication method (email, SSO, WARP)
+- ✅ Timestamp and session duration
+- ✅ Allow/deny decisions
+
+**Export Logs (for SIEM integration):**
+```bash
+# Via API (example with jq)
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/{{ account_id }}/access/logs/access_requests" \
+  -H "Authorization: Bearer {{ api_token }}" | jq .
+```
+
+**Set up Alerts:**
+- **Settings** → **Notifications** → **Add notification**
+- Alert on: Failed login attempts, unusual access patterns
 
 ### 3. Rotate Credentials
 
+**Tunnel Credentials:**
 ```bash
 # Rotate tunnel credentials
 cloudflared tunnel delete duli-tunnel
 cloudflared tunnel create duli-tunnel
+
 # Update vault.yml with new credentials
 ansible-vault edit inventories/group_vars/all/vault.yml
+
+# Re-deploy cloudflared
+ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
 ```
+
+**Access Policies:**
+```bash
+# Rotate API token
+# 1. Create new token at: https://dash.cloudflare.com/profile/api-tokens
+# 2. Update vault.yml
+ansible-vault edit inventories/group_vars/all/vault.yml
+# 3. Re-run setup
+ansible-playbook -i inventories/hosts.ini playbooks/setup_cloudflare.yml
+```
+
+### 4. Network Isolation
+
+**Kubernetes Network Policies:**
+
+Infrastructure services are protected at multiple layers:
+
+```yaml
+# Example: Restrict PostgreSQL access to authorized pods only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-access
+  namespace: staging
+spec:
+  podSelector:
+    matchLabels:
+      app: database
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: cloudflare-system  # Only cloudflared pods
+        - podSelector:
+            matchLabels:
+              app: backend  # Only backend pods
+      ports:
+        - protocol: TCP
+          port: 5432
+```
+
+**Zero Trust Principles:**
+- ✅ Cloudflared runs in isolated namespace
+- ✅ Services not exposed via NodePort/LoadBalancer
+- ✅ Direct pod access blocked by network policies
+- ✅ All traffic authenticated and encrypted via Cloudflare tunnel
 
 ---
 

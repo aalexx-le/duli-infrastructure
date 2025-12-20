@@ -18,11 +18,14 @@ cloudflare:
   secret: ""  # Set via Ansible from vault
   
   # Use existing secret instead of creating new one
-  # secretName: cloudflared-credentials
+  secretName: cloudflared-credentials
   
   # Enable WARP routing for TCP (required for TCP services)
   enableWarp: true
-  
+
+  # Force IPv4 for edge connections to avoid IPv6 WARP policy issues
+  edgeIPVersion: "4"
+
   # Ingress rules - route traffic to internal Kubernetes services
   ingress:
     # Staging PostgreSQL
@@ -48,7 +51,27 @@ cloudflare:
     # Production RabbitMQ AMQP
     - hostname: mq.duli.one
       service: tcp://queue.prod.svc.cluster.local:5672
-    
+
+    # Staging HTTPS Services via Ingress-Nginx
+    - hostname: argocd-staging.duli.one
+      service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+
+    - hostname: rancher-staging.duli.one
+      service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+
+    - hostname: queue-staging.duli.one
+      service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+
+    # Production HTTPS Services via Ingress-Nginx
+    - hostname: argocd.duli.one
+      service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+
+    - hostname: rancher.duli.one
+      service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+
+    - hostname: queue.duli.one
+      service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+
     # Note: Catch-all rule (http_status:404) is automatically added by the Helm template
 
 # Image configuration

@@ -179,6 +179,7 @@
             tunnelId: "{{ tunnel_id }}"
             secretName: cloudflared-credentials
             enableWarp: true
+            edgeIPVersion: "4"
             ingress:
               - hostname: db.staging.duli.one
                 service: tcp://database-rw.staging.svc.cluster.local:5432
@@ -192,6 +193,18 @@
                 service: tcp://redis-replication.prod.svc.cluster.local:6379
               - hostname: mq.duli.one
                 service: tcp://queue.prod.svc.cluster.local:5672
+              - hostname: argocd-staging.duli.one
+                service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+              - hostname: rancher-staging.duli.one
+                service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+              - hostname: queue-staging.duli.one
+                service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+              - hostname: argocd.duli.one
+                service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+              - hostname: rancher.duli.one
+                service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+              - hostname: queue.duli.one
+                service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
               # Note: Catch-all (http_status:404) is auto-added by Helm template
           replicaCount: 2
           image:
@@ -268,6 +281,36 @@
         api_token: "{{ vault_cloudflare_api_token }}"
         state: present
       loop: "{{ cloudflare_subdomains | selectattr('type', 'equalto', 'CNAME') | list }}"
+
+    - name: Create Cloudflare Tunnel DNS records
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item }}"
+        type: CNAME
+        value: "{{ tunnel_id }}.cfargotunnel.com"
+        proxied: no  # DNS-only mode for Tunnel
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: present
+        timeout: 60  # Increase timeout for slow API
+      retries: 3
+      delay: 5
+      register: dns_result
+      until: dns_result is succeeded
+      loop:
+        # TCP Services
+        - "db.staging.{{ cloudflare_zone }}"
+        - "redis.staging.{{ cloudflare_zone }}"
+        - "mq.staging.{{ cloudflare_zone }}"
+        - "db.{{ cloudflare_zone }}"
+        - "redis.{{ cloudflare_zone }}"
+        - "mq.{{ cloudflare_zone }}"
+        # HTTPS Services (via tunnel, then ingress-nginx)
+        - "argocd-staging.{{ cloudflare_zone }}"
+        - "rancher-staging.{{ cloudflare_zone }}"
+        - "queue-staging.{{ cloudflare_zone }}"
+        - "argocd.{{ cloudflare_zone }}"
+        - "rancher.{{ cloudflare_zone }}"
+        - "queue.{{ cloudflare_zone }}"
     
     - name: Set SSL mode to Full (Strict)
       uri:
@@ -326,15 +369,170 @@
         status_code: [200]
     
     # ========================================================================
-    # CLOUDFLARE ACCESS
+    # CLOUDFLARE ACCESS - Zero Trust Applications
     # ========================================================================
     
-    - name: Display Cloudflare Access setup
+    - name: Validate Cloudflare Access configuration
+      assert:
+        that:
+          - cloudflare_access_allowed_emails is defined
+          - cloudflare_access_allowed_emails | length > 0
+        fail_msg: |
+          Cloudflare Access email configuration missing in cloudflare.yml
+          Add: cloudflare_access_allowed_emails: ["user@example.com", "@yourdomain.com"]
+    
+    - name: Get Cloudflare Zone ID for Access
+      set_fact:
+        access_zone_id: "{{ zone_id }}"
+    
+    - name: Define TCP infrastructure services for Access
+      set_fact:
+        tcp_services:
+          - name: "PostgreSQL Staging"
+            domain: "db.staging.{{ cloudflare_zone }}"
+            description: "Staging PostgreSQL database - TCP port 5432"
+          - name: "Redis Staging"
+            domain: "redis.staging.{{ cloudflare_zone }}"
+            description: "Staging Redis cache - TCP port 6379"
+          - name: "RabbitMQ Staging"
+            domain: "mq.staging.{{ cloudflare_zone }}"
+            description: "Staging RabbitMQ AMQP - TCP port 5672"
+          - name: "PostgreSQL Production"
+            domain: "db.{{ cloudflare_zone }}"
+            description: "Production PostgreSQL database - TCP port 5432"
+          - name: "Redis Production"
+            domain: "redis.{{ cloudflare_zone }}"
+            description: "Production Redis cache - TCP port 6379"
+          - name: "RabbitMQ Production"
+            domain: "mq.{{ cloudflare_zone }}"
+            description: "Production RabbitMQ AMQP - TCP port 5672"
+    
+    - name: Create Cloudflare Access Applications for TCP services
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ item.name }}"
+          domain: "{{ item.domain }}"
+          type: "self_hosted"
+          session_duration: "24h"
+          allowed_idps: []
+          auto_redirect_to_identity: false
+          enable_binding_cookie: false
+          custom_deny_message: "Access denied. Please contact your administrator."
+          custom_deny_url: ""
+          logo_url: ""
+          skip_interstitial: false
+          app_launcher_visible: true
+          service_auth_401_redirect: true
+          cors_headers:
+            allowed_methods:
+              - GET
+              - POST
+              - OPTIONS
+            allowed_origins:
+              - "*"
+            allow_credentials: true
+            max_age: 86400
+        status_code: [200, 201, 409]  # 409 = already exists
+      register: access_app_result
+      loop: "{{ tcp_services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      failed_when: 
+        - access_app_result.status not in [200, 201, 409]
+        - access_app_result.status != 403
+      ignore_errors: true
+    
+    - name: Check for permission errors
+      fail:
+        msg: |
+          ❌ Cloudflare API token lacks permissions to create Access applications.
+          
+          Required permissions (create new token at https://dash.cloudflare.com/profile/api-tokens):
+            - Account - Cloudflare Tunnel - Edit
+            - Account - Access: Apps and Policies - Edit
+            - Zone - Zone - Read
+            - Zone - DNS - Edit
+            - Zone - Zone Settings - Edit
+          
+          Account Resources: Include - All accounts
+          Zone Resources: Include - Specific zone - duli.one
+          
+          After creating the token, update vault.yml:
+            ansible-vault edit inventories/group_vars/all/vault.yml
+      when: access_app_result.results | selectattr('status', 'equalto', 403) | list | length > 0
+    
+    - name: Get existing Access Applications to extract IDs
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        status_code: [200]
+      register: existing_access_apps
+    
+    - name: Map application names to IDs
+      set_fact:
+        access_app_ids: "{{ access_app_ids | default({}) | combine({item.name: item.id}) }}"
+      loop: "{{ existing_access_apps.json.result }}"
+      when: item.domain in tcp_services | map(attribute='domain') | list
+      loop_control:
+        label: "{{ item.name }}"
+    
+    - name: Build Access policy include rules
+      set_fact:
+        access_policy_include: "{{ access_policy_include | default([]) + [{'email': {'email': item}}] }}"
+      loop: "{{ cloudflare_access_allowed_emails | select('match', '^[^@]+@') | list }}"
+      when: not item.startswith('@')
+    
+    - name: Add domain-based rules to Access policy
+      set_fact:
+        access_policy_include: "{{ access_policy_include | default([]) + [{'email_domain': {'domain': item | regex_replace('^@', '')}}] }}"
+      loop: "{{ cloudflare_access_allowed_emails | select('match', '^@') | list }}"
+    
+    - name: Create Access Policies for TCP services
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ vault_cloudflare_account_id }}/access/apps/{{ access_app_ids[item.name] }}/policies"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vault_cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "Allow Authorized Developers"
+          decision: "allow"
+          precedence: 1
+          include: "{{ access_policy_include }}"
+          exclude: []
+          require: []
+          session_duration: "24h"
+        status_code: [200, 201, 409]
+      register: access_policy_result
+      loop: "{{ tcp_services }}"
+      when: access_app_ids[item.name] is defined
+      loop_control:
+        label: "{{ item.name }}"
+    
+    - name: Display Cloudflare Access summary
       debug:
         msg: |
-          Configure Cloudflare Access at: https://one.dash.cloudflare.com
-          Create applications for: db.staging.duli.one, redis.staging.duli.one, mq.staging.duli.one
-          Policy: Allow @yourcompany.com emails
+          ✓ Cloudflare Access Applications created
+          ✓ Policies configured for: {{ cloudflare_access_allowed_emails | join(', ') }}
+          
+          Access Dashboard: https://one.dash.cloudflare.com/{{ vault_cloudflare_account_id }}/access/apps
+          
+          Developers can now connect directly:
+          - psql -h db.staging.duli.one -p 5432 -U duli_user
+          - redis-cli -h redis.staging.duli.one -p 6379
+          - amqp://mq.staging.duli.one:5672
+          
+          First-time authentication required via browser or WARP client
     
     # ========================================================================
     # DEPLOYMENT SUMMARY
@@ -347,8 +545,30 @@
           ✓ Replicas: {{ cloudflared_pods.resources | length }}
           ✓ LoadBalancer: {{ loadbalancer_ip }}
           ✓ SSL: Full (Strict), TLS 1.2+
-          
-          HTTPS: https://api.duli.one, https://ai.duli.one, https://n8n.duli.one
-          TCP: db.staging.duli.one:5432, redis.staging.duli.one:6379, mq.staging.duli.one:5672
-          
-          Next: Configure Cloudflare Access (see above) for direct developer access
+          ✓ Cloudflare Access: Enabled
+          ✓ IPv4 Preference: Enabled (edge-ip-version=4)
+
+          TCP Services (via Cloudflare Tunnel + Access):
+            - psql -h db.staging.duli.one -p 5432
+            - redis-cli -h redis.staging.duli.one -p 6379
+            - amqp://mq.staging.duli.one:5672
+            - psql -h db.duli.one -p 5432 (production)
+            - redis-cli -h redis.duli.one -p 6379 (production)
+            - amqp://mq.duli.one:5672 (production)
+
+          HTTPS Services (via Cloudflare Tunnel + Ingress-Nginx):
+            Staging:
+            - https://argocd-staging.duli.one (ArgoCD)
+            - https://rancher-staging.duli.one (Rancher)
+            - https://queue-staging.duli.one (RabbitMQ)
+
+            Production:
+            - https://argocd.duli.one (ArgoCD)
+            - https://rancher.duli.one (Rancher)
+            - https://queue.duli.one (RabbitMQ)
+
+          Next Steps:
+            1. Authenticate via browser on first connection
+            2. Install WARP client for better experience
+            3. View access logs: https://one.dash.cloudflare.com
+            4. Update WARP split tunnel policy to allow tunnel traffic

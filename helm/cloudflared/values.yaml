@@ -14,6 +14,9 @@ cloudflare:
   secretName: null
   # If true, turn on WARP routing for TCP
   enableWarp: false
+  # IP version preference for edge connections
+  # Options: auto (default), 4 (IPv4 only), 6 (IPv6 only)
+  edgeIPVersion: "auto"
   # Define ingress rules for the tunnel. See
   # https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress
   ingress: []
