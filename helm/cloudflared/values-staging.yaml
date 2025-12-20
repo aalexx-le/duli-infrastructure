@@ -8,6 +8,18 @@ cloudflare:
   enableWarp: true
   edgeIPVersion: "4"
   ingress:
+    # HTTP services - route to ingress-nginx
+    - hostname: api.staging.duli.one
+      service: http://ingress-nginx.ingress-nginx.svc.cluster.local:80
+    - hostname: ai.staging.duli.one
+      service: http://ingress-nginx.ingress-nginx.svc.cluster.local:80
+    - hostname: auth.staging.duli.one
+      service: http://ingress-nginx.ingress-nginx.svc.cluster.local:80
+    - hostname: n8n.staging.duli.one
+      service: http://ingress-nginx.ingress-nginx.svc.cluster.local:80
+    - hostname: queue.staging.duli.one
+      service: http://ingress-nginx.ingress-nginx.svc.cluster.local:80
+    # TCP services - direct connection
     - hostname: db.staging.duli.one
       service: tcp://database-rw.staging.svc.cluster.local:5432
     - hostname: redis.staging.duli.one
