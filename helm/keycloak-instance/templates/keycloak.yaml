@@ -18,9 +18,6 @@ spec:
     passwordSecret:
       name: {{ .Values.keycloak.db.secretName }}
       key: password
-  hostname:
-    hostname: {{ .Values.keycloak.hostname }}
-    strict: false
   proxy:
     headers: {{ .Values.keycloak.proxy.headers }}
   http:
