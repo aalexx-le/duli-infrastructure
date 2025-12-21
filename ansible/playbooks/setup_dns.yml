@@ -151,6 +151,16 @@
         solo: true  # Remove duplicate A records, keep only this one
       loop: "{{ shared_subdomains }}"
 
+    - name: Delete old CNAME records for HTTP services
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "{{ item.name }}.{{ cloudflare_zone }}"
+        type: CNAME
+        api_token: "{{ vault_cloudflare_api_token }}"
+        state: absent
+      loop: "{{ env_config.subdomains }}"
+      ignore_errors: true
+
     - name: Configure HTTP service A records
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"

@@ -75,11 +75,11 @@ ingress_nginx_configmap:
 # - Internal PostgreSQL: database-rw.staging.svc.cluster.local:5432
 ingress_nginx_configmap_tcp_services:
   "5432": "staging/database-rw:5432"
-  "6379": "staging/redis-master:6379"
+  "6379": "staging/redis-replication-master:6379"
   "5672": "staging/queue:5672"
   # Production namespaces
   "5433": "prod/database-rw:5432"
-  "6380": "prod/redis-master:6379"
+  "6380": "prod/redis-replication-master:6379"
   "5673": "prod/queue:5672"
 
 # Security Configuration (commented - enable for production)

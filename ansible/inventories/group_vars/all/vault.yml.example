@@ -22,42 +22,31 @@
 # ============================================================================
 
 # Cloud Provider
-vault_do_api_token: "dop_v1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
+vault_do_api_token: "dop_v1_your_digitalocean_token_here"
 
 # Cloudflare API Token (Secret: cloudflare-api-token)
-# Get from: https://dash.cloudflare.com/profile/api-tokens
-# Required permissions: Zone.DNS (Edit), Zone.Zone Settings (Edit)
-vault_cloudflare_api_token: "change-me-to-your-cloudflare-api-token"
-
-# Cloudflare Account ID
-# Get from: https://dash.cloudflare.com/ -> select account -> Account ID
-vault_cloudflare_account_id: "change-me-to-your-cloudflare-account-id"
+vault_cloudflare_api_token: "your_cloudflare_api_token_here"
+vault_cloudflare_account_id: "your_cloudflare_account_id_here"
 
 # Redis (Secret: redis-credentials)
-vault_redis_password: "change-me-to-secure-redis-password-min-32-chars"
+vault_redis_password: "your_redis_password_here"
 
-# PostgreSQL (Secret: postgres-credentials)
-# Used by CloudNativePG operator as superuser AND database owner
-# CNPG auto-generates 'database-app' secret with these credentials
-vault_postgres_username: "duli-admin"
-vault_postgres_password: "change-me-to-secure-postgres-password-min-32-chars"
+# PostgreSQL superuser (Secret: postgres-credentials)
+# Note: Username is always "postgres" for CNPG - only password is configurable
+# Application user (duli-admin) is auto-created by CNPG with auto-generated password
+vault_postgres_password: "your_postgres_password_here"
 
 # Keycloak Database (Secret: keycloak-db-credentials)
-# Separate database user for Keycloak (created via postInitApplicationSQL)
 vault_keycloak_db_username: "keycloak"
-vault_keycloak_db_password: "change-me-to-secure-keycloak-db-password-min-32-chars"
+vault_keycloak_db_password: "your_keycloak_db_password_here"
 
 # GitOps Tools
-vault_argocd_admin_password: "change-me-to-secure-argocd-password"
-vault_rancher_bootstrap_password: "change-me-to-secure-rancher-password"
+vault_argocd_admin_password: "your_argocd_admin_password_here"
+vault_rancher_bootstrap_password: "your_rancher_bootstrap_password_here"
 
 # Keycloak OAuth Identity Providers (Secret: keycloak-oauth-credentials)
-# Google OAuth - register at https://console.cloud.google.com/
-vault_oauth_google_client_id: "change-me-to-your-google-client-id.apps.googleusercontent.com"
-vault_oauth_google_client_secret: "change-me-to-your-google-client-secret"
+vault_oauth_google_client_id: "your_google_client_id.apps.googleusercontent.com"
+vault_oauth_google_client_secret: "your_google_client_secret_here"
 
 # Keycloak Backend Service Client Secret (Secret: keycloak-backend-service)
-# Confidential client secret for NestJS backend token exchange and validation
-# Generate with: openssl rand -base64 32
-vault_keycloak_backend_service_secret: "change-me-to-secure-backend-client-secret-min-32-chars"
+vault_keycloak_backend_service_secret: "your_keycloak_backend_service_secret_here"

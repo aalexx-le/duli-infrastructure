@@ -146,13 +146,10 @@
           hostname: "{{ rancher_hostname | default('rancher.local') }}"
           bootstrapPassword: "{{ vault_rancher_bootstrap_password | default('admin') }}"
           replicas: 3
+          # TLS is terminated at ingress-nginx, tell Rancher not to redirect HTTP to HTTPS
+          tls: external
           ingress:
-            tls:
-              source: letsEncrypt  # Use cert-manager with Let's Encrypt instead of self-signed
-          letsEncrypt:
-            email: "{{ letsencrypt_email | default('admin@duli.one') }}"
-            ingress:
-              class: nginx
+            ingressClassName: nginx
           service:
             type: "{{ rancher_service_type | default('LoadBalancer') }}"
       retries: "{{ helm_retries }}"
@@ -174,6 +171,38 @@
         wait_timeout: "{{ pod_wait_timeout }}"
       retries: "{{ pod_wait_retries }}"
       delay: "{{ pod_wait_delay }}"
+
+    - name: Create Rancher TLS certificate using ClusterIssuer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: tls-rancher-ingress
+            namespace: cattle-system
+          spec:
+            secretName: tls-rancher-ingress
+            issuerRef:
+              name: letsencrypt-prod
+              kind: ClusterIssuer
+            dnsNames:
+              - "{{ rancher_hostname }}"
+
+    - name: Patch Rancher ingress with TLS configuration
+      kubernetes.core.k8s:
+        state: patched
+        definition:
+          apiVersion: networking.k8s.io/v1
+          kind: Ingress
+          metadata:
+            name: rancher
+            namespace: cattle-system
+          spec:
+            tls:
+              - hosts:
+                  - "{{ rancher_hostname }}"
+                secretName: tls-rancher-ingress
 
     - name: Configure ArgoCD server service
       kubernetes.core.k8s:
@@ -208,12 +237,10 @@
         current_environment: "{{ target_environment }}"
       run_once: true
 
-    - name: Deploy ArgoCD Application of Infrastructure
+    - name: Deploy shared ArgoCD Applications (run once)
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
-      vars:
-        target_env: "{{ current_environment }}"
       loop:
         - sealed-secrets-controller
         - cert-manager-issuers
@@ -223,13 +250,14 @@
         - redis-operator
         - argocd-ingress
       loop_control:
-        label: "{{ item }}-{{ current_environment }}"
+        label: "{{ item }}"
       retries: 3
       delay: 5
-      until: argocd_apps_result is succeeded
-      register: argocd_apps_result
+      until: argocd_shared_apps_result is succeeded
+      register: argocd_shared_apps_result
+      run_once: true
 
-    - name: Wait for ArgoCD Applications to sync
+    - name: Wait for shared ArgoCD Applications to sync
       kubernetes.core.k8s_info:
         kind: Application
         namespace: argocd
@@ -249,6 +277,7 @@
         - redis-operator
         - argocd-ingress
       loop_control:
-        label: "{{ item }}-{{ current_environment }}"
+        label: "{{ item }}"
       retries: 2
       delay: 15
+      run_once: true
