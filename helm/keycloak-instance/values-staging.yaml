@@ -10,9 +10,9 @@ keycloak:
   tls:
     enabled: false
   # Proxy configuration - replaces deprecated 'proxy' option
+  # Use 'xforwarded' to match NGINX X-Forwarded-* headers (not RFC 7239 Forwarded header)
   proxy:
-    mode: "forwarded"
-    headers: "forwarded"
+    headers: "xforwarded"
 
 # Service configuration - ClusterIP since accessed via Ingress
 service:

@@ -27,14 +27,9 @@ spec:
   http:
     httpEnabled: true
     httpsPort: 8443
-  unsupported:
-    podTemplate:
-      spec:
-        containers:
-        - env:
-          - name: KC_HTTP_ENABLED
-            value: "true"
-          - name: KC_HOSTNAME_STRICT_HTTPS
-            value: "false"
-          - name: KC_PROXY_ADDRESS_FORWARDING
-            value: "true"
+  # Additional pod configuration if needed
+  # unsupported:
+  #   podTemplate:
+  #     spec:
+  #       containers:
+  #       - env: []
