@@ -32,7 +32,7 @@ ingress:
   proxyBufferSize: "128k"
   tls:
     enabled: true
-    secretName: "duli-one-wildcard-tls"
+    secretName: "keycloak-tls"  # Created by cert-manager from ingress annotation
   annotations: {}
 
 # Client secrets for staging

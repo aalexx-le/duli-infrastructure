@@ -7,7 +7,7 @@
 # Deploy core infrastructure (Cert-Manager, Rancher, ArgoCD, sealed-secrets controller, operators)
 - import_playbook: install_infrastructures.yml
 
-# Configure DNS and SSL (without Cloudflare Tunnel)
+# Configure DNS and SSL
 - import_playbook: setup_dns.yml
 
 # Generate sealed secrets (requires sealed-secrets controller)

@@ -255,6 +255,6 @@
           
           NOTE: Applications inside cluster continue using internal service names:
             - database-rw.{{ target_environment }}.svc.cluster.local
-            - redis-master.{{ target_environment }}.svc.cluster.local
+            - redis-replication-master.{{ target_environment }}.svc.cluster.local
             - queue.{{ target_environment }}.svc.cluster.local
 

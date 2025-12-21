@@ -5,6 +5,9 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   instances: {{ .Values.keycloak.instances }}
+  # Disable operator-managed ingress - use Helm-managed ingress for full TLS control
+  ingress:
+    enabled: false
   db:
     vendor: {{ .Values.keycloak.db.vendor }}
     host: {{ .Values.keycloak.db.host }}

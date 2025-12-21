@@ -1,10 +1,5 @@
-# ============================================================================
 # {{ target_namespace | upper }} ENVIRONMENT - CONNECTION INFORMATION
-# ============================================================================
 # Generated: {{ ansible_date_time.iso8601 }}
-#
-# All services accessible via domain names
-# ============================================================================
 
 [environment]
 namespace = {{ target_namespace }}
@@ -13,10 +8,6 @@ domain_suffix = {{ domain_base }}
 {% else %}
 domain_suffix = {{ target_namespace }}.{{ domain_base }}
 {% endif %}
-
-# ============================================================================
-# APPLICATION SERVICES (HTTPS)
-# ============================================================================
 
 [backend]
 {% if target_namespace == 'prod' %}
@@ -46,97 +37,58 @@ url = https://auth.{{ domain_base }}
 url = https://auth.{{ target_namespace }}.{{ domain_base }}
 {% endif %}
 
-# ============================================================================
-# INFRASTRUCTURE SERVICES
-# ============================================================================
-
-[postgresql]
+[db]
 {% if target_namespace == 'prod' %}
-domain = db.{{ domain_base }}
+host = db.{{ domain_base }}
+port = 5433
 {% else %}
-domain = db.{{ target_namespace }}.{{ domain_base }}
-{% endif %}
+host = db-{{ target_namespace }}.{{ domain_base }}
 port = 5432
+{% endif %}
 username = {{ postgres_user }}
 password = {{ postgres_pass }}
 database = {{ postgres_db }}
 {% if target_namespace == 'prod' %}
-connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.{{ domain_base }}:5432/{{ postgres_db }}
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.{{ domain_base }}:5433/{{ postgres_db }}
 {% else %}
-connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db.{{ target_namespace }}.{{ domain_base }}:5432/{{ postgres_db }}
+connection_url = postgresql://{{ postgres_user }}:{{ postgres_pass }}@db-{{ target_namespace }}.{{ domain_base }}:5432/{{ postgres_db }}
 {% endif %}
 
 [redis]
 {% if target_namespace == 'prod' %}
-domain = redis.{{ domain_base }}
+host = redis.{{ domain_base }}
+port = 6380
 {% else %}
-domain = redis.{{ target_namespace }}.{{ domain_base }}
-{% endif %}
+host = redis-{{ target_namespace }}.{{ domain_base }}
 port = 6379
+{% endif %}
 password = {{ redis_password }}
 {% if target_namespace == 'prod' %}
-connection_url = redis://:{{ redis_password }}@redis.{{ domain_base }}:6379
+connection_url = redis://:{{ redis_password }}@redis.{{ domain_base }}:6380
 {% else %}
-connection_url = redis://:{{ redis_password }}@redis.{{ target_namespace }}.{{ domain_base }}:6379
+connection_url = redis://:{{ redis_password }}@redis-{{ target_namespace }}.{{ domain_base }}:6379
 {% endif %}
 
-[rabbitmq]
+[queue]
 {% if target_namespace == 'prod' %}
-amqp_domain = mq.{{ domain_base }}
+host = mq.{{ domain_base }}
+port = 5673
 {% else %}
-amqp_domain = mq.{{ target_namespace }}.{{ domain_base }}
+host = mq-{{ target_namespace }}.{{ domain_base }}
+port = 5672
 {% endif %}
-amqp_port = 5672
 username = {{ rabbitmq_user }}
 password = {{ rabbitmq_pass }}
 {% if target_namespace == 'prod' %}
 management_url = https://queue.{{ domain_base }}
-connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq.{{ domain_base }}:5672
+connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq.{{ domain_base }}:5673
 {% else %}
-management_url = https://queue.{{ target_namespace }}.{{ domain_base }}
-connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq.{{ target_namespace }}.{{ domain_base }}:5672
+management_url = https://queue-{{ target_namespace }}.{{ domain_base }}
+connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq-{{ target_namespace }}.{{ domain_base }}:5672
 {% endif %}
-
-# ============================================================================
-# GITOPS TOOLS
-# ============================================================================
 
 [argocd]
 url = https://argocd.{{ domain_base }}
 
 [rancher]
 url = https://rancher.{{ domain_base }}
-
-# ============================================================================
-# USAGE EXAMPLES
-# ============================================================================
-#
-# PostgreSQL:
-{% if target_namespace == 'prod' %}
-#   psql -h db.{{ domain_base }} -p 5432 -U {{ postgres_user }} -d {{ postgres_db }}
-{% else %}
-#   psql -h db.{{ target_namespace }}.{{ domain_base }} -p 5432 -U {{ postgres_user }} -d {{ postgres_db }}
-{% endif %}
-#
-# Redis:
-{% if target_namespace == 'prod' %}
-#   redis-cli -h redis.{{ domain_base }} -p 6379 -a <password>
-{% else %}
-#   redis-cli -h redis.{{ target_namespace }}.{{ domain_base }} -p 6379 -a <password>
-{% endif %}
-#
-# RabbitMQ AMQP:
-{% if target_namespace == 'prod' %}
-#   amqp://{{ rabbitmq_user }}:<password>@mq.{{ domain_base }}:5672
-{% else %}
-#   amqp://{{ rabbitmq_user }}:<password>@mq.{{ target_namespace }}.{{ domain_base }}:5672
-{% endif %}
-#
-# RabbitMQ Management UI:
-{% if target_namespace == 'prod' %}
-#   https://queue.{{ domain_base }}
-{% else %}
-#   https://queue.{{ target_namespace }}.{{ domain_base }}
-{% endif %}
-#
-# ============================================================================
