@@ -34,3 +34,23 @@ output "cluster_info" {
     workers         = var.worker_count
   }
 }
+
+output "inventory" {
+  description = "Ansible inventory for Kubernetes cluster"
+  value = templatefile("${path.module}/templates/inventory.tpl", {
+    control_plane_nodes = [
+      for idx, cp in module.kubernetes_cluster.control_plane_details : {
+        name       = cp.name
+        public_ip  = cp.public_ip
+        private_ip = cp.private_ip
+      }
+    ]
+    worker_nodes = [
+      for idx, worker in module.kubernetes_cluster.worker_details : {
+        name       = worker.name
+        public_ip  = worker.public_ip
+        private_ip = worker.private_ip
+      }
+    ]
+  })
+}
