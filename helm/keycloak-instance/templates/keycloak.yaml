@@ -18,14 +18,14 @@ spec:
     passwordSecret:
       name: {{ .Values.keycloak.db.secretName }}
       key: password
-  http:
-    httpEnabled: true  # Allow HTTP traffic (TLS handled by ingress)
-    httpsPort: 8443
   hostname:
     hostname: {{ .Values.keycloak.hostname }}
     strict: false
   proxy:
     headers: {{ .Values.keycloak.proxy.headers }}
+  http:
+    httpEnabled: true
+    httpsPort: 8443
   unsupported:
     podTemplate:
       spec:

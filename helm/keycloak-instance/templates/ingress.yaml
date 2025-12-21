@@ -16,8 +16,12 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.proxyBodySize | default "10m" | quote }}
     nginx.ingress.kubernetes.io/proxy-buffer-size: {{ .Values.ingress.proxyBufferSize | default "128k" | quote }}
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
-    # Important for Keycloak: preserve host header
+    # Important for Keycloak: preserve host header and force HTTPS
     nginx.ingress.kubernetes.io/proxy-pass-headers: "X-Forwarded-For,X-Forwarded-Proto,X-Forwarded-Host"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-Port 443;
     # Backend protocol - use HTTP since TLS terminates at ingress
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     {{- with .Values.ingress.annotations }}
