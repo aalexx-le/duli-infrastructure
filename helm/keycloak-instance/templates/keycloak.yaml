@@ -35,3 +35,5 @@ spec:
             value: "true"
           - name: KC_HOSTNAME_STRICT_HTTPS
             value: "false"
+          - name: KC_PROXY
+            value: "edge"
