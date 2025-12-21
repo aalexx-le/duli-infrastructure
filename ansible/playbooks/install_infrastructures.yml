@@ -146,6 +146,13 @@
           hostname: "{{ rancher_hostname | default('rancher.local') }}"
           bootstrapPassword: "{{ vault_rancher_bootstrap_password | default('admin') }}"
           replicas: 3
+          ingress:
+            tls:
+              source: letsEncrypt  # Use cert-manager with Let's Encrypt instead of self-signed
+          letsEncrypt:
+            email: "{{ letsencrypt_email | default('admin@duli.one') }}"
+            ingress:
+              class: nginx
           service:
             type: "{{ rancher_service_type | default('LoadBalancer') }}"
       retries: "{{ helm_retries }}"

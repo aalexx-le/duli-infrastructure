@@ -136,6 +136,7 @@
         proxied: yes
         api_token: "{{ vault_cloudflare_api_token }}"
         state: present
+        solo: true  # Remove duplicate A records, keep only this one
       when: target_environment == 'prod'
     
     - name: Configure shared infrastructure A records
@@ -147,6 +148,7 @@
         proxied: "{{ item.proxied }}"
         api_token: "{{ vault_cloudflare_api_token }}"
         state: present
+        solo: true  # Remove duplicate A records, keep only this one
       loop: "{{ shared_subdomains }}"
 
     - name: Configure HTTP service A records
@@ -158,6 +160,7 @@
         proxied: "{{ item.proxied }}"
         api_token: "{{ vault_cloudflare_api_token }}"
         state: present
+        solo: true  # Remove duplicate A records, keep only this one
       loop: "{{ env_config.subdomains }}"
     
     - name: Delete old Cloudflare Tunnel CNAME records for TCP services
@@ -178,6 +181,7 @@
         proxied: no
         api_token: "{{ vault_cloudflare_api_token }}"
         state: present
+        solo: true  # Remove duplicate A records, keep only this one
       loop: "{{ env_config.tcp_services }}"
     
     - name: Set SSL mode to Full (Strict)

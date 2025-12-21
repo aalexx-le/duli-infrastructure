@@ -37,9 +37,10 @@ vault_cloudflare_account_id: "change-me-to-your-cloudflare-account-id"
 # Redis (Secret: redis-credentials)
 vault_redis_password: "change-me-to-secure-redis-password-min-32-chars"
 
-# PostgreSQL Superuser (Secret: postgres-credentials)
+# PostgreSQL (Secret: postgres-credentials)
 # Used by CloudNativePG operator for cluster management
-vault_postgres_password: "change-me-to-secure-postgres-superuser-password-min-32-chars"
+vault_postgres_username: "postgres"
+vault_postgres_password: "change-me-to-secure-postgres-password-min-32-chars"
 
 # PostgreSQL Application User (Secret: database-app)
 # Used by applications (Keycloak, Backend, AI Service, Scheduler)
