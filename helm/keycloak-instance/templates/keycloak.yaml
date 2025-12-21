@@ -18,6 +18,10 @@ spec:
     passwordSecret:
       name: {{ .Values.keycloak.db.secretName }}
       key: password
+  hostname:
+    hostname: {{ .Values.keycloak.hostname }}
+    strict: false
+    strictBackchannel: false
   proxy:
     headers: {{ .Values.keycloak.proxy.headers }}
   http:
@@ -32,7 +36,5 @@ spec:
             value: "true"
           - name: KC_HOSTNAME_STRICT_HTTPS
             value: "false"
-          - name: KC_PROXY
-            value: "edge"
-          - name: KC_HOSTNAME_URL
-            value: "https://{{ .Values.keycloak.hostname }}"
+          - name: KC_PROXY_ADDRESS_FORWARDING
+            value: "true"
