@@ -63,6 +63,25 @@ ingress_nginx_configmap:
   proxy-read-timeout: "600"
   proxy-send-timeout: "600"
 
+# ============================================================================
+# TCP SERVICE CONFIGURATION (for external access via LoadBalancer)
+# ============================================================================
+# Maps external LoadBalancer ports to internal Kubernetes services.
+# NOTE: These are for EXTERNAL access only (developers, tools, CI/CD).
+# Applications inside the cluster continue using ClusterIP service names.
+#
+# Usage:
+# - External PostgreSQL: psql -h db-staging.duli.one -p 5432
+# - Internal PostgreSQL: database-rw.staging.svc.cluster.local:5432
+ingress_nginx_configmap_tcp_services:
+  "5432": "staging/database-rw:5432"
+  "6379": "staging/redis-master:6379"
+  "5672": "staging/queue:5672"
+  # Production namespaces
+  "5433": "prod/database-rw:5432"
+  "6380": "prod/redis-master:6379"
+  "5673": "prod/queue:5672"
+
 # Security Configuration (commented - enable for production)
 # kube_encrypt_secret_data: true
 # kube_encryption_algorithm: "aescbc"

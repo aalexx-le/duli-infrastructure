@@ -17,7 +17,7 @@ do_csi_driver_version: "v4.8.0"  # Compatible with K8s 1.33.x
 
 # VPC Configuration
 # Used by: do_cloud_controller_manager.yml
-do_cluster_vpc_id: "23055ff5-c6a8-4221-8876-093de3968e1a"
+do_cluster_vpc_id: "91d23d52-6016-41b1-ac9c-e0263e52038b"
 
 # Storage Configuration
 # Default storage class created by CSI driver
