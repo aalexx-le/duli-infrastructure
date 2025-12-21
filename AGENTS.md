@@ -87,21 +87,21 @@ infrastructure-kubernetes/
 Main entry: `ansible/playbooks/site.yml` (orchestrates all phases)
 
 **Modular Playbooks:**
-- `kubespray.yml` - Kubernetes cluster provisioning (includes ingress-nginx)
+- `kubespray.yml` - Kubernetes cluster provisioning (includes ingress-nginx with TCP passthrough)
 - `do_csi_driver.yml` - DigitalOcean Block Storage CSI driver installation
 - `do_cloud_controller_manager.yml` - DigitalOcean Cloud Controller Manager
-- `install_infrastructures.yml` - Cert-Manager, Rancher, ArgoCD, operators, Cloudflare API token secret
-- `setup_cloudflare.yml` - Cloudflare Tunnel, DNS records, SSL/TLS settings
+- `install_infrastructures.yml` - Cert-Manager, Rancher, ArgoCD, operators
+- `setup_dns.yml` - DNS records and SSL/TLS settings (for external access)
 - `generate_sealed_secrets.yml` - Sealed secrets generation
 - `deploy_applications.yml` - Application services deployment
 - `export_connection.yml` - Connection information export
 
 **Execution Order:**
-1. `kubespray.yml` - Creates Kubernetes cluster with ingress-nginx (LoadBalancer)
+1. `kubespray.yml` - Creates Kubernetes cluster with ingress-nginx (LoadBalancer with TCP ports for external access)
 2. `do_csi_driver.yml` - Installs DigitalOcean CSI driver (creates `do-block-storage` StorageClass)
 3. `do_cloud_controller_manager.yml` - Installs DigitalOcean CCM for LoadBalancer support
 4. `install_infrastructures.yml` - Deploys Cert-Manager, Rancher, ArgoCD, infrastructure operators
-5. `setup_cloudflare.yml` - Creates Cloudflare Tunnel, configures DNS and SSL
+5. `setup_dns.yml` - Configures DNS records and SSL/TLS settings for external access
 6. `generate_sealed_secrets.yml` - Generates sealed secrets
 7. `deploy_applications.yml` - Deploys application services via ArgoCD
 8. `export_connection.yml` - Exports connection information
@@ -212,6 +212,26 @@ High-availability services deployed from Bitnami Helm charts (via Ansible):
 - Architecture: Multi-node cluster with Kubernetes peer discovery
 - Default: 3 cluster nodes
 - Storage: Persistent volumes via `do-block-storage`
+
+### TCP Services Access
+
+**Internal (Applications inside cluster):**
+- Staging Database: `database-rw.staging.svc.cluster.local:5432`
+- Production Database: `database-rw.prod.svc.cluster.local:5432`
+- Staging Redis: `redis-master.staging.svc.cluster.local:6379`
+- Production Redis: `redis-master.prod.svc.cluster.local:6379`
+- Staging RabbitMQ: `queue.staging.svc.cluster.local:5672`
+- Production RabbitMQ: `queue.prod.svc.cluster.local:5672`
+
+**External (Developers, tools, CI/CD - via ingress-nginx LoadBalancer):**
+- Staging PostgreSQL: `db-staging.duli.one:5432`
+- Production PostgreSQL: `db.duli.one:5433`
+- Staging Redis: `redis-staging.duli.one:6379`
+- Production Redis: `redis.duli.one:6380`
+- Staging RabbitMQ: `mq-staging.duli.one:5672`
+- Production RabbitMQ: `mq.duli.one:5673`
+
+**Note:** Applications always use internal service names (ClusterIP) for better performance and security. External domains are only for developer access from outside the cluster.
 
 ### Application Services (ArgoCD-managed)
 
