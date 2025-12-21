@@ -3,38 +3,34 @@
 
 [environment]
 namespace = {{ target_namespace }}
-{% if target_namespace == 'prod' %}
 domain_suffix = {{ domain_base }}
-{% else %}
-domain_suffix = {{ target_namespace }}.{{ domain_base }}
-{% endif %}
 
 [backend]
 {% if target_namespace == 'prod' %}
 url = https://api.{{ domain_base }}
 {% else %}
-url = https://api.{{ target_namespace }}.{{ domain_base }}
+url = https://api-{{ target_namespace }}.{{ domain_base }}
 {% endif %}
 
 [ai-service]
 {% if target_namespace == 'prod' %}
 url = https://ai.{{ domain_base }}
 {% else %}
-url = https://ai.{{ target_namespace }}.{{ domain_base }}
+url = https://ai-{{ target_namespace }}.{{ domain_base }}
 {% endif %}
 
 [scheduler]
 {% if target_namespace == 'prod' %}
 url = https://n8n.{{ domain_base }}
 {% else %}
-url = https://n8n.{{ target_namespace }}.{{ domain_base }}
+url = https://n8n-{{ target_namespace }}.{{ domain_base }}
 {% endif %}
 
 [keycloak]
 {% if target_namespace == 'prod' %}
 url = https://auth.{{ domain_base }}
 {% else %}
-url = https://auth.{{ target_namespace }}.{{ domain_base }}
+url = https://auth-{{ target_namespace }}.{{ domain_base }}
 {% endif %}
 
 [db]
@@ -73,19 +69,16 @@ connection_url = redis://:{{ redis_password }}@redis-{{ target_namespace }}.{{ d
 {% if target_namespace == 'prod' %}
 host = mq.{{ domain_base }}
 port = 5673
-{% else %}
-host = mq-{{ target_namespace }}.{{ domain_base }}
-port = 5672
-{% endif %}
-username = {{ rabbitmq_user }}
-password = {{ rabbitmq_pass }}
-{% if target_namespace == 'prod' %}
 management_url = https://queue.{{ domain_base }}
 connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq.{{ domain_base }}:5673
 {% else %}
+host = mq-{{ target_namespace }}.{{ domain_base }}
+port = 5672
 management_url = https://queue-{{ target_namespace }}.{{ domain_base }}
 connection_url = amqp://{{ rabbitmq_user }}:{{ rabbitmq_pass }}@mq-{{ target_namespace }}.{{ domain_base }}:5672
 {% endif %}
+username = {{ rabbitmq_user }}
+password = {{ rabbitmq_pass }}
 
 [argocd]
 url = https://argocd.{{ domain_base }}

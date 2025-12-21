@@ -38,14 +38,15 @@ vault_cloudflare_account_id: "change-me-to-your-cloudflare-account-id"
 vault_redis_password: "change-me-to-secure-redis-password-min-32-chars"
 
 # PostgreSQL (Secret: postgres-credentials)
-# Used by CloudNativePG operator for cluster management
-vault_postgres_username: "postgres"
+# Used by CloudNativePG operator as superuser AND database owner
+# CNPG auto-generates 'database-app' secret with these credentials
+vault_postgres_username: "duli-admin"
 vault_postgres_password: "change-me-to-secure-postgres-password-min-32-chars"
 
-# PostgreSQL Application User (Secret: database-app)
-# Used by applications (Keycloak, Backend, AI Service, Scheduler)
-vault_postgres_app_username: "duli_user"
-vault_postgres_app_password: "change-me-to-secure-app-db-password-min-32-chars"
+# Keycloak Database (Secret: keycloak-db-credentials)
+# Separate database user for Keycloak (created via postInitApplicationSQL)
+vault_keycloak_db_username: "keycloak"
+vault_keycloak_db_password: "change-me-to-secure-keycloak-db-password-min-32-chars"
 
 # GitOps Tools
 vault_argocd_admin_password: "change-me-to-secure-argocd-password"

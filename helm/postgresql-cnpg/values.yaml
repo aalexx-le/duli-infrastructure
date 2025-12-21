@@ -20,10 +20,11 @@ cluster:
     secretName: postgres-credentials
   
   # Bootstrap configuration
+  # Owner must match username in postgres-credentials secret
   bootstrap:
     initdb:
       database: duli_db
-      owner: duli_user
+      owner: duli-admin
       postInitApplicationSQL: []
         # Application databases created here if needed
   
