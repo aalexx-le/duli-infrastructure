@@ -1,0 +1,25 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keycloak-db-{{ target_env }}
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: {{ git_repo_url }}
+    targetRevision: {{ git_branch | default('main') }}
+    path: helm/keycloak-db
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-{{ target_env }}.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keycloak-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

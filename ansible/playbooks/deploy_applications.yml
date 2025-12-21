@@ -59,6 +59,7 @@
         - postgresql-instance
         - rabbitmq-instance
         - redis-instance
+        - keycloak-db
         - keycloak-instance
         - backend
         - ai-service
@@ -86,6 +87,7 @@
         - postgresql-instance
         - rabbitmq-instance
         - redis-instance
+        - keycloak-db
         - keycloak-instance
         - backend
         - ai-service

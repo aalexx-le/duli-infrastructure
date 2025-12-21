@@ -1,0 +1,10 @@
+# Keycloak Dedicated PostgreSQL - Staging Configuration
+cluster:
+  instances: 1
+  storage:
+    size: 10Gi
+    storageClass: do-block-storage
+  postgresql:
+    parameters:
+      shared_buffers: "64MB"
+      effective_cache_size: "128MB"

@@ -8,6 +8,7 @@ spec:
   db:
     vendor: {{ .Values.keycloak.db.vendor }}
     host: {{ .Values.keycloak.db.host }}
+    database: {{ .Values.keycloak.db.database | default "keycloak" }}
     usernameSecret:
       name: {{ .Values.keycloak.db.secretName }}
       key: username

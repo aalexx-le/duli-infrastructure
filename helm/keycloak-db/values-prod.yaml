@@ -1,0 +1,12 @@
+# Keycloak Dedicated PostgreSQL - Production Configuration
+cluster:
+  instances: 3
+  storage:
+    size: 50Gi
+    storageClass: do-block-storage
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+      effective_cache_size: "512MB"
+      work_mem: "16MB"

@@ -5,10 +5,11 @@ metadata:
   name: {{ .Values.cluster.name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: postgresql-cnpg
+    app.kubernetes.io/name: keycloak-db
     app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: database
 spec:
-  description: "PostgreSQL HA Cluster"
+  description: "Dedicated PostgreSQL Cluster for Keycloak"
   imageName: {{ .Values.cluster.imageName }}
   instances: {{ .Values.cluster.instances }}
   
@@ -19,10 +20,8 @@ spec:
     initdb:
       database: {{ .Values.cluster.bootstrap.initdb.database }}
       owner: {{ .Values.cluster.bootstrap.initdb.owner }}
-      postInitApplicationSQL:
-{{- range .Values.cluster.bootstrap.initdb.postInitApplicationSQL }}
-        - {{ . | quote }}
-{{- end }}
+      secret:
+        name: {{ .Values.cluster.credentials.secretName }}
   
   postgresql:
     parameters:
@@ -31,21 +30,6 @@ spec:
 {{- end }}
   
   primaryUpdateStrategy: unsupervised
-
-  # Managed services configuration
-  managed:
-    services:
-      additional:
-      - selectorType: rw
-        updateStrategy: replace
-        serviceTemplate:
-          metadata:
-            name: {{ .Values.cluster.name }}-rw-lb
-          spec:
-            type: {{ .Values.cluster.service.type | default "LoadBalancer" }}
-{{- if eq (.Values.cluster.service.type | default "LoadBalancer") "LoadBalancer" }}
-            externalTrafficPolicy: {{ .Values.cluster.service.externalTrafficPolicy | default "Cluster" }}
-{{- end }}
 
   storage:
     size: {{ .Values.cluster.storage.size }}

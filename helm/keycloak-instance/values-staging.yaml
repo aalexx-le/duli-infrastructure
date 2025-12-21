@@ -4,7 +4,8 @@ keycloak:
   hostname: "auth-staging.duli.one"
   db:
     vendor: postgres
-    host: database-rw.staging.svc.cluster.local
+    host: keycloak-db-rw.keycloak-system.svc.cluster.local
+    database: keycloak
     secretName: keycloak-db-credentials
   tls:
     enabled: false

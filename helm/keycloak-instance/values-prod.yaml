@@ -4,7 +4,8 @@ keycloak:
   hostname: "auth.duli.one"
   db:
     vendor: postgres
-    host: database-rw.prod.svc.cluster.local
+    host: keycloak-db-rw.keycloak-system.svc.cluster.local
+    database: keycloak
     secretName: keycloak-db-credentials
   tls:
     enabled: false  # TLS terminates at ingress level

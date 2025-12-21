@@ -15,16 +15,17 @@ cluster:
   # Cluster topology
   instances: 3
   
+  # Credentials secret (contains username and password for superuser)
+  credentials:
+    secretName: postgres-credentials
+  
   # Bootstrap configuration
   bootstrap:
     initdb:
       database: duli_db
       owner: duli_user
-      postInitApplicationSQL:
-        # Create Keycloak database
-        - CREATE DATABASE keycloak OWNER duli_user;
-        # Create other application databases as needed
-        # Password is set via Secret reference (see cluster-secret-ref below)
+      postInitApplicationSQL: []
+        # Application databases created here if needed
   
   # Monitoring and health checks
   monitoring:
