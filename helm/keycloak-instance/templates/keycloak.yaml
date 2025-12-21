@@ -37,3 +37,5 @@ spec:
             value: "false"
           - name: KC_PROXY
             value: "edge"
+          - name: KC_HOSTNAME_URL
+            value: "https://{{ .Values.keycloak.hostname }}"
