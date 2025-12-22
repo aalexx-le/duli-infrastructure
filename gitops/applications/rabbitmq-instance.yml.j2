@@ -35,9 +35,11 @@ spec:
         - /metadata/finalizers
         - /metadata/uid
         - /metadata/creationTimestamp
+        - /metadata/labels/app.kubernetes.io~1instance
         - /spec/delayStartSeconds
         - /spec/override
         - /spec/secretBackend
         - /spec/tls
         - /spec/terminationGracePeriodSeconds
         - /spec/persistence/storage
+        - /spec/affinity/podAntiAffinity/preferredDuringSchedulingIgnoredDuringExecution/0/weight
