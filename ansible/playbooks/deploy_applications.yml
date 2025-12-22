@@ -48,10 +48,9 @@
     # ARGOCD APPLICATIONS
     # ============================================================================
 
-    # Shared resources (only deployed for staging to avoid conflicts)
-    # These resources are shared between prod and staging environments:
-    # - keycloak-db: Shared database for both Keycloak instances
-    # - infrastructure-secrets: Secrets in keycloak-system namespace
+    # Shared resources (deployed for both environments)
+    # These resources are environment-independent but shared across services:
+    # - infrastructure-secrets: Secrets in keycloak-system namespace (staging only)
     - name: Deploy Shared ArgoCD Applications (staging only)
       kubernetes.core.k8s:
         state: present
@@ -60,7 +59,6 @@
         target_env: staging
       loop:
         - infrastructure-secrets
-        - keycloak-db
       loop_control:
         label: "{{ item }}-staging (shared)"
       retries: 3
@@ -77,6 +75,7 @@
       vars:
         target_env: "{{ current_environment }}"
       loop:
+        - keycloak-db
         - postgresql-instance
         - rabbitmq-instance
         - redis-instance
@@ -105,7 +104,6 @@
         wait_timeout: 300
       loop:
         - infrastructure-secrets
-        - keycloak-db
       loop_control:
         label: "{{ item }}-staging (shared)"
       retries: 2
@@ -126,6 +124,7 @@
         wait_sleep: 10
         wait_timeout: 300
       loop:
+        - keycloak-db
         - postgresql-instance
         - rabbitmq-instance
         - redis-instance

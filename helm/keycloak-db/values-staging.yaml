@@ -2,7 +2,7 @@
 cluster:
   instances: 1
   storage:
-    size: 10Gi
+    size: 2Gi
     storageClass: do-block-storage
   
   resources:

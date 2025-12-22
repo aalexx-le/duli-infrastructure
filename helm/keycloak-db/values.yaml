@@ -30,11 +30,6 @@ cluster:
       work_mem: "8MB"
       maintenance_work_mem: "32MB"
   
-  # Storage configuration
-  storage:
-    size: 10Gi
-    storageClass: do-block-storage
-  
   # Service configuration
   service:
     type: ClusterIP
