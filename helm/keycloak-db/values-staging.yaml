@@ -1,9 +1,13 @@
 # Keycloak Dedicated PostgreSQL - Staging Configuration
 cluster:
+  name: keycloak-db-staging
   instances: 1
   storage:
     size: 2Gi
     storageClass: do-block-storage
+  
+  credentials:
+    secretName: keycloak-db-staging-credentials
   
   resources:
     requests:

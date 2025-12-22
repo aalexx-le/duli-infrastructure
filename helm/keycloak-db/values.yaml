@@ -3,6 +3,7 @@
 
 cluster:
   enabled: true
+  # Overridden per environment (keycloak-db-staging, keycloak-db-prod)
   name: keycloak-db
   
   # PostgreSQL version
@@ -11,7 +12,7 @@ cluster:
   # Single instance for staging, increase for production
   instances: 1
   
-  # Credentials secret (contains username and password)
+  # Credentials secret (overridden per environment)
   credentials:
     secretName: keycloak-db-credentials
   

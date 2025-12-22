@@ -1,9 +1,13 @@
 # Keycloak Dedicated PostgreSQL - Production Configuration
 cluster:
+  name: keycloak-db-prod
   instances: 1
   storage:
     size: 8Gi
     storageClass: do-block-storage
+  
+  credentials:
+    secretName: keycloak-db-prod-credentials
   
   resources:
     requests:

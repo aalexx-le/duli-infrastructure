@@ -4,9 +4,9 @@ keycloak:
   hostname: "auth-staging.duli.one"
   db:
     vendor: postgres
-    host: keycloak-db-rw.staging.svc.cluster.local
+    host: keycloak-db-staging-rw.keycloak-system.svc.cluster.local
     database: keycloak
-    secretName: keycloak-db-credentials
+    secretName: keycloak-db-staging-credentials
   tls:
     enabled: false
   # Proxy configuration - replaces deprecated 'proxy' option
