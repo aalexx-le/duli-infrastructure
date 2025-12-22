@@ -26,16 +26,9 @@ spec:
   ignoreDifferences:
     - group: k8s.keycloak.org
       kind: Keycloak
-      jsonPointers:
-        - /status
-        - /metadata/generation
-        - /metadata/resourceVersion
-        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
-        - /spec/instances  # Operator may adjust replicas
-        - /spec/resources  # Operator may normalize resource specs
+      managedFieldsManagers:
+        - keycloak-operator
     - group: k8s.keycloak.org
       kind: KeycloakRealmImport
-      jsonPointers:
-        - /status
-        - /metadata/generation
-        - /metadata/resourceVersion
+      managedFieldsManagers:
+        - keycloak-operator

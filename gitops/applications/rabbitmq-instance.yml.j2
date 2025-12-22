@@ -27,18 +27,5 @@ spec:
   ignoreDifferences:
     - group: rabbitmq.com
       kind: RabbitmqCluster
-      jsonPointers:
-        - /status
-        - /metadata/generation
-        - /metadata/resourceVersion
-        - /metadata/annotations
-        - /metadata/finalizers
-        - /metadata/uid
-        - /metadata/creationTimestamp
-        - /spec/persistence
-        - /spec/override
-        - /spec/delayStartSeconds
-        - /spec/affinity
-        - /spec/secretBackend
-        - /spec/tls
-        - /spec/terminationGracePeriodSeconds
+      managedFieldsManagers:
+        - rabbitmq-cluster-operator
