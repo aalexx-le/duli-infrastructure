@@ -23,10 +23,11 @@ redis:
     size: 5Gi # Increased from 1Gi to match old setup
     storageClassName: do-block-storage
 
-  # Service configuration for external access
-  # Use LoadBalancer for production, NodePort for staging
+  # Service configuration - ClusterIP is sufficient
+  # Apps connect via internal DNS (redis-replication-master.{namespace}.svc)
+  # External access available via ingress-nginx TCP passthrough if needed
   service:
-    type: LoadBalancer # Default: LoadBalancer (override to NodePort in values-staging.yaml)
+    type: ClusterIP
 
   redisSecret:
     name: redis-credentials

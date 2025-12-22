@@ -1,20 +1,19 @@
 redis:
-  # Production: Higher replica count for better HA
-  size: 3 # 1 master + 2 replicas
+  # Production: HA with 1 master + 1 replica
+  size: 2
 
   # Storage class for DigitalOcean (production)
   storage:
     storageClassName: do-block-storage
-    size: 50Gi # Production storage size
+    size: 10Gi
 
   kubernetesConfig:
-    # Production resource limits (higher than staging)
+    # Production resource limits (optimized for small nodes)
     resources:
       requests:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 100m
+        memory: 256Mi
       limits:
-        cpu: 1000m
-        memory: 2Gi
-
+        cpu: 500m
+        memory: 512Mi
 

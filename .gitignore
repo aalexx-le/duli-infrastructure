@@ -11,6 +11,8 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+connection-info*.ini
+
 # Ansible
 *.retry
 ansible/inventories/*/hosts

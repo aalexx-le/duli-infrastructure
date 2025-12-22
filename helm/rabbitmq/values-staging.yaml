@@ -18,7 +18,7 @@ cluster:
   # Storage configuration
   storage:
     storageClass: do-block-storage
-    size: 10Gi
+    size: 5Gi
   
   # Resource limits (reduced for staging)
   # NOTE: RabbitMQ requires memory.requests == memory.limits

@@ -1,5 +1,5 @@
 keycloak:
-  instances: 3  # High availability - 3 replicas for production
+  instances: 2  # HA with 2 replicas
   # Hostname for Keycloak (used in realm configuration)
   hostname: "auth.duli.one"
   db:

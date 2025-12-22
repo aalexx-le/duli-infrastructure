@@ -1,8 +1,8 @@
 # Keycloak Dedicated PostgreSQL - Production Configuration
 cluster:
-  instances: 3
+  instances: 1
   storage:
-    size: 50Gi
+    size: 10Gi
     storageClass: do-block-storage
   postgresql:
     parameters:
