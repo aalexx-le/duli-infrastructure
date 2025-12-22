@@ -30,7 +30,12 @@ spec:
         - /status
         - /metadata/generation
         - /metadata/resourceVersion
+        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
+        - /spec/instances  # Operator may adjust replicas
+        - /spec/resources  # Operator may normalize resource specs
     - group: k8s.keycloak.org
       kind: KeycloakRealmImport
       jsonPointers:
         - /status
+        - /metadata/generation
+        - /metadata/resourceVersion
