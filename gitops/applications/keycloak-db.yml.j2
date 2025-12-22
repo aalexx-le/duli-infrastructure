@@ -23,3 +23,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
+  # Ignore operator-managed fields that cause sync drift
+  ignoreDifferences:
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jsonPointers:
+        - /status
+        - /metadata/generation
+        - /metadata/resourceVersion
