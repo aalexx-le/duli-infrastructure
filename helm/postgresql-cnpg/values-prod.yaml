@@ -3,6 +3,10 @@ cluster:
   name: database
   instances: 2  # 2 instances for HA
   
+  bootstrap:
+    initdb:
+      database: duli_prod
+  
   postgresql:
     parameters:
       shared_buffers: "64MB"

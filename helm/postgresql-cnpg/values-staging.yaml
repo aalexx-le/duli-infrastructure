@@ -3,6 +3,10 @@ cluster:
   name: database
   instances: 1
   
+  bootstrap:
+    initdb:
+      database: duli_staging
+  
   postgresql:
     parameters:
       shared_buffers: "64MB"
