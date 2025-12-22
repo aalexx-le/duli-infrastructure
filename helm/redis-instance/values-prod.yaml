@@ -2,7 +2,7 @@
 redis:
   name: redis-replication
   mode: Replication
-  size: 1  # Single instance for small cluster
+  size: 2  # 2 instances for HA (1 master + 1 replica)
   
   kubernetesConfig:
     image: quay.io/opstree/redis:v7.0.12
@@ -12,8 +12,8 @@ redis:
         cpu: 50m
         memory: 64Mi
       limits:
-        cpu: 150m
-        memory: 128Mi
+        cpu: 100m
+        memory: 96Mi
   
   storage:
     size: 10Gi

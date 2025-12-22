@@ -127,8 +127,20 @@
       until: storageclass_result.resources | length > 0
       ignore_errors: true
 
+    - name: Patch StorageClass to use Delete reclaim policy
+      kubernetes.core.k8s:
+        state: patched
+        kind: StorageClass
+        name: do-block-storage
+        kubeconfig: "{{ kubeconfig_path }}"
+        definition:
+          reclaimPolicy: Delete
+      when: storageclass_result.resources | length > 0
+      run_once: true
+
     - name: Report CSI Driver status
       debug:
         msg: |
           CSI Driver Setup Complete.
           StorageClass Status: {% if storageclass_result.resources | length > 0 %}✓ Ready{% else %}⚠ Installing (this may take a moment){% endif %}
+          Reclaim Policy: Delete (volumes auto-delete when PVCs are deleted)
