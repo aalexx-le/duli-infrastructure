@@ -1,18 +1,21 @@
-# Loki - Shared Logging Configuration
+# Loki - MINIMAL Configuration
 # Chart: grafana/loki v6.49.0
-# Namespace: monitoring (collects logs from ALL namespaces)
-# Deployment Mode: SimpleScalable (HA)
+# Optimized for: 1 vCPU / 1GB RAM nodes
+# Deployment Mode: SingleBinary (lowest resource usage)
 
-deploymentMode: SimpleScalable
+deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
+  
+  commonConfig:
+    replication_factor: 1
   
   schemaConfig:
     configs:
       - from: 2024-04-01
         store: tsdb
-        object_store: s3
+        object_store: filesystem
         schema: v13
         index:
           prefix: loki_index_
@@ -20,109 +23,79 @@ loki:
   
   ingester:
     chunk_encoding: snappy
+    chunk_idle_period: 1h
+    chunk_target_size: 1048576  # 1MB
+    max_chunk_age: 1h
   
   tracing:
-    enabled: true
+    enabled: false
   
   querier:
-    max_concurrent: 4
+    max_concurrent: 2
+  
+  query_scheduler:
+    max_outstanding_requests_per_tenant: 100
   
   limits_config:
-    retention_period: 720h  # 30 days
-    ingestion_rate_mb: 10
-    ingestion_burst_size_mb: 20
-    max_query_series: 1000
-    max_query_parallelism: 4
+    retention_period: 72h  # 3 days only
+    ingestion_rate_mb: 2
+    ingestion_burst_size_mb: 4
+    max_query_series: 100
+    max_query_parallelism: 2
+    max_entries_limit_per_query: 1000
   
   storage:
-    type: s3
-    s3:
-      endpoint: http://loki-minio.monitoring.svc.cluster.local:9000
-      bucketnames: loki-data
-      access_key_id: loki
-      secret_access_key: supersecret  # Override via existingSecret in production
-      s3ForcePathStyle: true
-      insecure: true
+    type: filesystem
 
-# SimpleScalable mode - read/write/backend separation
-backend:
-  replicas: 2
-  persistence:
-    enabled: true
-    storageClass: do-block-storage
-    size: 20Gi
-  resources:
-    limits:
-      cpu: 1
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-read:
-  replicas: 2
-  resources:
-    limits:
-      cpu: 1
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-write:
-  replicas: 2
-  persistence:
-    enabled: true
-    storageClass: do-block-storage
-    size: 20Gi
-  resources:
-    limits:
-      cpu: 1
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-# Gateway
-gateway:
-  enabled: true
-  replicas: 2
-  resources:
-    limits:
-      cpu: 500m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-  ingress:
-    enabled: false  # Internal only, accessed via Grafana
-
-# MinIO for object storage
-minio:
-  enabled: true
+# Single binary mode - MINIMAL
+singleBinary:
   replicas: 1
   persistence:
     enabled: true
     storageClass: do-block-storage
-    size: 50Gi
+    size: 5Gi
   resources:
     limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 100m
+      cpu: 200m
       memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  extraEnv:
+    - name: GOMEMLIMIT
+      value: 200MiB
 
-# Cache settings
-chunksCache:
+# Gateway - MINIMAL
+gateway:
   enabled: true
-  writebackSizeLimit: 500MB
+  replicas: 1
+  resources:
+    limits:
+      cpu: 50m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+  ingress:
+    enabled: false  # Internal only
+
+# Disable MinIO - use filesystem
+minio:
+  enabled: false
+
+# Disable caching to save memory
+chunksCache:
+  enabled: false
 
 resultsCache:
-  enabled: true
+  enabled: false
 
-# Zero out other modes
-singleBinary:
+# Zero out all other modes
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
   replicas: 0
 ingester:
   replicas: 0
@@ -143,8 +116,14 @@ bloomCompactor:
 bloomGateway:
   replicas: 0
 
-# ServiceMonitor for Prometheus to scrape Loki metrics
+# Disable monitoring of Loki itself
 serviceMonitor:
-  enabled: true
-  labels:
-    release: prometheus
+  enabled: false
+
+# Disable test pod
+test:
+  enabled: false
+
+# Disable canary
+lokiCanary:
+  enabled: false

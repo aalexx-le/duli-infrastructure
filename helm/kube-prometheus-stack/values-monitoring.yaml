@@ -1,38 +1,38 @@
-# Kube Prometheus Stack - Shared Monitoring Configuration
+# Kube Prometheus Stack - MINIMAL Configuration
 # Chart: prometheus-community/kube-prometheus-stack v80.6.0
-# Namespace: monitoring (shared across all environments)
+# Optimized for: 1 vCPU / 1GB RAM nodes
 
-# Full alerting rules
+# Reduce default rules to minimize memory
 defaultRules:
   create: true
   rules:
     alertmanager: true
-    etcd: true
+    etcd: false
     configReloaders: true
     general: true
-    k8sContainerCpuUsageSecondsTotal: true
-    k8sContainerMemoryCache: true
-    k8sContainerMemoryRss: true
-    k8sContainerMemorySwap: true
+    k8sContainerCpuUsageSecondsTotal: false
+    k8sContainerMemoryCache: false
+    k8sContainerMemoryRss: false
+    k8sContainerMemorySwap: false
     k8sContainerResource: true
     k8sPodOwner: true
-    kubeApiserverAvailability: true
-    kubeApiserverBurnrate: true
-    kubeApiserverHistogram: true
-    kubeApiserverSlos: true
-    kubeControllerManager: true
+    kubeApiserverAvailability: false
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeControllerManager: false
     kubelet: true
-    kubeProxy: true
+    kubeProxy: false
     kubePrometheusGeneral: true
     kubePrometheusNodeRecording: true
     kubernetesApps: true
     kubernetesResources: true
     kubernetesStorage: true
-    kubernetesSystem: true
-    kubeSchedulerAlerting: true
-    kubeSchedulerRecording: true
+    kubernetesSystem: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
     kubeStateMetrics: true
-    network: true
+    network: false
     node: true
     nodeExporterAlerting: true
     nodeExporterRecording: true
@@ -40,12 +40,12 @@ defaultRules:
     prometheusOperator: true
     windows: false
 
-# Alertmanager - HA configuration
+# Alertmanager - MINIMAL
 alertmanager:
   enabled: true
   alertmanagerSpec:
-    replicas: 2
-    retention: 720h  # 30 days
+    replicas: 1
+    retention: 72h  # 3 days only
     storage:
       volumeClaimTemplate:
         spec:
@@ -53,16 +53,16 @@ alertmanager:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 1Gi
     resources:
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 50m
+        memory: 64Mi
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 10m
+        memory: 32Mi
 
-# Grafana - shared dashboard for all environments
+# Grafana - MINIMAL
 grafana:
   enabled: true
   adminUser: admin
@@ -79,9 +79,8 @@ grafana:
     storageClassName: do-block-storage
     accessModes:
       - ReadWriteOnce
-    size: 10Gi
+    size: 1Gi
   
-  # Single ingress for monitoring
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -94,7 +93,6 @@ grafana:
         hosts:
           - grafana.duli.one
   
-  # Loki datasource (same namespace)
   additionalDataSources:
     - name: Loki
       type: loki
@@ -102,43 +100,56 @@ grafana:
       access: proxy
       isDefault: false
       jsonData:
-        maxLines: 1000
+        maxLines: 500
   
   resources:
     limits:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 100m
+      memory: 128Mi
     requests:
-      cpu: 200m
-      memory: 512Mi
+      cpu: 20m
+      memory: 64Mi
 
   sidecar:
     dashboards:
       enabled: true
-      label: grafana_dashboard
-      labelValue: "1"
-      searchNamespace: ALL  # Discover dashboards from all namespaces
+      searchNamespace: ALL
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
     datasources:
       enabled: true
-      defaultDatasourceEnabled: true
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
 
-# Prometheus - scrapes ALL namespaces
+# Prometheus - MINIMAL
 prometheus:
   enabled: true
   prometheusSpec:
-    replicas: 2
-    retention: 30d
-    retentionSize: "45GB"
+    replicas: 1
+    retention: 3d  # 3 days only
+    retentionSize: "2GB"
     
-    # IMPORTANT: Scrape from ALL namespaces (staging, prod, etc.)
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
-    serviceMonitorNamespaceSelector: {}  # All namespaces
-    podMonitorNamespaceSelector: {}      # All namespaces
-    ruleNamespaceSelector: {}            # All namespaces
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    ruleNamespaceSelector: {}
     
-    # Storage
+    # Scrape less frequently
+    scrapeInterval: 60s
+    evaluationInterval: 60s
+    
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -146,57 +157,60 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 50Gi
+              storage: 5Gi
     
     resources:
       limits:
-        cpu: 2000m
-        memory: 4Gi
+        cpu: 200m
+        memory: 512Mi
       requests:
-        cpu: 500m
-        memory: 2Gi
-    
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
+        cpu: 50m
+        memory: 256Mi
 
-# Prometheus Operator
+# Prometheus Operator - MINIMAL
 prometheusOperator:
   enabled: true
   resources:
     limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 128Mi
+    requests:
+      cpu: 20m
+      memory: 64Mi
+  
+  admissionWebhooks:
+    enabled: false  # Disable webhooks to save resources
 
-# Node exporter - runs on ALL nodes
+# Node exporter - MINIMAL
 prometheus-node-exporter:
   resources:
     limits:
-      cpu: 200m
-      memory: 128Mi
-    requests:
       cpu: 50m
-      memory: 64Mi
+      memory: 32Mi
+    requests:
+      cpu: 10m
+      memory: 16Mi
 
-# Kube state metrics - cluster-wide
+# Kube state metrics - MINIMAL
 kube-state-metrics:
   resources:
     limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
       cpu: 50m
-      memory: 128Mi
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
 
-# Enable monitoring of control plane
+# Disable control plane monitoring (not accessible on managed k8s)
 kubeControllerManager:
-  enabled: true
+  enabled: false
 kubeScheduler:
-  enabled: true
+  enabled: false
 kubeProxy:
-  enabled: true
+  enabled: false
 kubeEtcd:
-  enabled: true
+  enabled: false
+
+# Disable thanos
+thanosRuler:
+  enabled: false
