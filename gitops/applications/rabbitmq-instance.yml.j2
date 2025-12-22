@@ -27,25 +27,10 @@ spec:
   ignoreDifferences:
     - group: rabbitmq.com
       kind: RabbitmqCluster
-      jsonPointers:
-        # Status and metadata (always operator-managed)
-        - /status
-        - /metadata/generation
-        - /metadata/resourceVersion
-        - /metadata/annotations
-        - /metadata/finalizers
-        - /metadata/uid
-        - /metadata/creationTimestamp
-        - /metadata/labels
-        # Spec fields that the operator overrides
-        - /spec/delayStartSeconds
-        - /spec/override
-        - /spec/secretBackend
-        - /spec/tls
-        - /spec/terminationGracePeriodSeconds
-        - /spec/persistence/storage
-        - /spec/affinity
-        - /spec/rabbitmq
-        - /spec/replicas
-        - /spec/resources
-        - /spec/service
+      jqPathExpressions:
+        - .spec
+        - .metadata.labels
+        - .metadata.generation
+        - .metadata.resourceVersion
+        - .metadata.annotations
+        - .metadata.finalizers
