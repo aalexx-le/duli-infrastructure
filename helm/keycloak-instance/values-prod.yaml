@@ -13,6 +13,14 @@ keycloak:
   proxy:
     mode: "forwarded"
     headers: "forwarded"
+  # Resource limits for small cluster
+  resources:
+    requests:
+      cpu: 200m
+      memory: 768Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
 
 # Service configuration - ClusterIP since accessed via Ingress
 service:

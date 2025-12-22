@@ -27,9 +27,13 @@ spec:
   http:
     httpEnabled: true
     httpsPort: 8443
-  # Additional pod configuration if needed
-  # unsupported:
-  #   podTemplate:
-  #     spec:
-  #       containers:
-  #       - env: []
+  {{- if .Values.keycloak.resources }}
+  # Resource limits for Keycloak pods
+  unsupported:
+    podTemplate:
+      spec:
+        containers:
+        - name: keycloak
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+  {{- end }}
