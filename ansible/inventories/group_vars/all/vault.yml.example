@@ -44,6 +44,9 @@ vault_keycloak_db_password: "your_keycloak_db_password_here"
 vault_argocd_admin_password: "your_argocd_admin_password_here"
 vault_rancher_bootstrap_password: "your_rancher_bootstrap_password_here"
 
+# Monitoring Stack (Secret: grafana-admin-credentials)
+vault_grafana_admin_password: "your_grafana_admin_password_here"
+
 # Keycloak OAuth Identity Providers (Secret: keycloak-oauth-credentials)
 vault_oauth_google_client_id: "your_google_client_id.apps.googleusercontent.com"
 vault_oauth_google_client_secret: "your_google_client_secret_here"

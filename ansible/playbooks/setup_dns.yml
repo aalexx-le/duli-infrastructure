@@ -27,6 +27,9 @@
       - name: "rancher"
         type: "A"
         proxied: yes
+      - name: "grafana"
+        type: "A"
+        proxied: yes
     
     # Environment-specific HTTP services
     env_configs:

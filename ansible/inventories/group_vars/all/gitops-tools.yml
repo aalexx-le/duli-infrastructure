@@ -25,6 +25,7 @@ domain_scheduler: "n8n.{{ domain_base }}"     # n8n scheduler
 domain_auth: "auth.{{ domain_base }}"         # Keycloak authentication
 domain_argocd: "argocd.{{ domain_base }}"     # ArgoCD UI
 domain_rancher: "rancher.{{ domain_base }}"   # Rancher UI
+domain_grafana: "grafana.{{ domain_base }}"   # Grafana monitoring UI
 
 # TLS Configuration
 # ClusterIssuer to use for certificate generation
@@ -71,3 +72,20 @@ rancher_service_type: ClusterIP
 
 # Rancher hostname for ingress
 rancher_hostname: "rancher.{{ domain_base }}"
+
+# ============================================================================
+# MONITORING STACK - CONFIGURATION
+# ============================================================================
+# Shared monitoring infrastructure deployed to 'monitoring' namespace.
+# Collects metrics and logs from ALL namespaces (staging, prod, etc.)
+
+# Prometheus Stack (kube-prometheus-stack chart v80.6.0)
+# Includes: Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics
+monitoring_prometheus_stack_enabled: true
+
+# Loki Stack (grafana/loki chart v6.49.0)
+# Includes: Loki (log aggregation), MinIO (object storage)
+monitoring_loki_enabled: true
+
+# Grafana hostname for ingress
+grafana_hostname: "grafana.{{ domain_base }}"
