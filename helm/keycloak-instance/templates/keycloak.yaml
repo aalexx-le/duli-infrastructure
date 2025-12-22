@@ -8,6 +8,11 @@ spec:
   # Disable operator-managed ingress - use Helm-managed ingress for full TLS control
   ingress:
     enabled: false
+  {{- if .Values.keycloak.resources }}
+  # Resource limits for Keycloak pods (supported field)
+  resources:
+    {{- toYaml .Values.keycloak.resources | nindent 4 }}
+  {{- end }}
   db:
     vendor: {{ .Values.keycloak.db.vendor }}
     host: {{ .Values.keycloak.db.host }}
@@ -27,13 +32,3 @@ spec:
   http:
     httpEnabled: true
     httpsPort: 8443
-  {{- if .Values.keycloak.resources }}
-  # Resource limits for Keycloak pods
-  unsupported:
-    podTemplate:
-      spec:
-        containers:
-        - name: keycloak
-          resources:
-            {{- toYaml .Values.keycloak.resources | nindent 12 }}
-  {{- end }}
