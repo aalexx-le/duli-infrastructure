@@ -22,3 +22,15 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # Ignore operator-managed fields that cause sync drift
+  ignoreDifferences:
+    - group: k8s.keycloak.org
+      kind: Keycloak
+      jsonPointers:
+        - /status
+        - /metadata/generation
+        - /metadata/resourceVersion
+    - group: k8s.keycloak.org
+      kind: KeycloakRealmImport
+      jsonPointers:
+        - /status
