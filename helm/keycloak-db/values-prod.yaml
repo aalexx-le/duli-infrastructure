@@ -7,7 +7,7 @@ cluster:
     storageClass: do-block-storage
   
   credentials:
-    secretName: keycloak-db-prod-credentials
+    secretName: keycloak-db-credentials
   
   resources:
     requests:
