@@ -8,8 +8,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: {{ git_repo_url }}
-    targetRevision: {{ git_branch }}
+    repoURL: "{{ git_repo_url }}"
+    targetRevision: {{ git_branch | default('main') }}
     path: helm/loki
     helm:
       valueFiles:
