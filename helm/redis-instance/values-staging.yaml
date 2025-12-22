@@ -1,27 +1,27 @@
-# Redis Instance - Staging Configuration
+# Redis - Staging Configuration
 redis:
   name: redis-replication
   mode: Replication
-  size: 2  # 1 master + 1 replica
-
+  size: 1  # Single instance for staging
+  
   kubernetesConfig:
     image: quay.io/opstree/redis:v7.0.12
     imagePullPolicy: IfNotPresent
     resources:
       requests:
         cpu: 50m
-        memory: 128Mi
+        memory: 64Mi
       limits:
         cpu: 100m
-        memory: 256Mi
-
+        memory: 128Mi
+  
   storage:
     size: 5Gi
     storageClassName: do-block-storage
-
+  
   service:
     type: ClusterIP
-
+  
   redisSecret:
     name: redis-credentials
     key: password

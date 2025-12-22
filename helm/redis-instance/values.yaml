@@ -1,8 +1,10 @@
-# Redis Instance - Base Configuration
-# Environment-specific values are in values-staging.yaml and values-prod.yaml
+# Redis - Base Configuration
+# Environment-specific values in values-staging.yaml and values-prod.yaml
+
 redis:
   name: redis-replication
   mode: Replication
+  
   redisSecret:
     name: redis-credentials
     key: password

@@ -1,9 +1,8 @@
-# PostgreSQL Staging Configuration (CloudNativePG)
+# PostgreSQL - Staging Configuration
 cluster:
+  name: database
   instances: 1
-  # Service configuration - use ClusterIP (accessed via TCP pass-through)
-  service:
-    type: ClusterIP
+  
   postgresql:
     parameters:
       shared_buffers: "64MB"
@@ -12,9 +11,11 @@ cluster:
       maintenance_work_mem: "32MB"
       random_page_cost: "1.1"
       effective_io_concurrency: "200"
+  
   storage:
     size: 50Gi
     storageClass: do-block-storage
+  
   resources:
     requests:
       cpu: 100m
@@ -22,3 +23,6 @@ cluster:
     limits:
       cpu: 500m
       memory: 512Mi
+  
+  service:
+    type: ClusterIP
