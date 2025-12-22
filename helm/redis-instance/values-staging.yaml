@@ -9,11 +9,11 @@ redis:
     imagePullPolicy: IfNotPresent
     resources:
       requests:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 25m
+        memory: 32Mi
       limits:
         cpu: 100m
-        memory: 128Mi
+        memory: 64Mi
   
   storage:
     size: 5Gi

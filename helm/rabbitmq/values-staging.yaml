@@ -17,10 +17,10 @@ cluster:
   resources:
     requests:
       cpu: 50m
-      memory: 256Mi
+      memory: 128Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 150m
+      memory: 128Mi
   
   rabbitmq:
     additionalConfig: |

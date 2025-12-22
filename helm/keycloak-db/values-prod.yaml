@@ -4,9 +4,18 @@ cluster:
   storage:
     size: 10Gi
     storageClass: do-block-storage
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  
   postgresql:
     parameters:
-      max_connections: "200"
-      shared_buffers: "256MB"
-      effective_cache_size: "512MB"
-      work_mem: "16MB"
+      max_connections: "100"
+      shared_buffers: "64MB"
+      effective_cache_size: "128MB"
+      work_mem: "4MB"
