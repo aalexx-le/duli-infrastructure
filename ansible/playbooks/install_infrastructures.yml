@@ -238,44 +238,42 @@
       run_once: true
 
     - name: Deploy shared ArgoCD Applications (run once)
-      kubernetes.core.k8s:
-        state: present
-        definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
-      loop:
-        - sealed-secrets-controller
-        - cert-manager-issuers
-        - cloudnative-pg-operator
-        - rabbitmq-operator
-        - keycloak-operator
-        - redis-operator
-        - argocd-ingress
-      loop_control:
-        label: "{{ item }}"
-      retries: 3
-      delay: 5
-      until: argocd_shared_apps_result is succeeded
-      register: argocd_shared_apps_result
-      run_once: true
+       kubernetes.core.k8s:
+         state: present
+         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
+       loop:
+         - sealed-secrets-controller
+         - cert-manager-issuers
+         - cloudnative-pg-operator
+         - rabbitmq-operator
+         - keycloak-operator
+         - redis-operator
+       loop_control:
+         label: "{{ item }}"
+       retries: 3
+       delay: 5
+       until: argocd_shared_apps_result is succeeded
+       register: argocd_shared_apps_result
+       run_once: true
 
     - name: Wait for shared ArgoCD Applications to sync
-      kubernetes.core.k8s_info:
-        kind: Application
-        namespace: argocd
-        name: "{{ item }}"
-        wait: true
-        wait_condition:
-          type: Synced
-          status: "True"
-        wait_sleep: 10
-        wait_timeout: 300
-      loop:
-        - sealed-secrets-controller
-        - cert-manager-issuers
-        - cloudnative-pg-operator
-        - rabbitmq-operator
-        - keycloak-operator
-        - redis-operator
-        - argocd-ingress
+       kubernetes.core.k8s_info:
+         kind: Application
+         namespace: argocd
+         name: "{{ item }}"
+         wait: true
+         wait_condition:
+           type: Synced
+           status: "True"
+         wait_sleep: 10
+         wait_timeout: 300
+       loop:
+         - sealed-secrets-controller
+         - cert-manager-issuers
+         - cloudnative-pg-operator
+         - rabbitmq-operator
+         - keycloak-operator
+         - redis-operator
       loop_control:
         label: "{{ item }}"
       retries: 2

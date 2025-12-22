@@ -198,17 +198,7 @@ This means:
 
 #### ArgoCD
 
-**Ingress:** `helm/argocd-ingress/templates/ingress.yaml`
-
-```yaml
-annotations:
-  cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  tls:
-  - hosts:
-    - argocd.duli.one
-    secretName: duli-one-wildcard-tls
-```
+ArgoCD is accessed through the shared ingress-nginx LoadBalancer with TLS termination. No separate ingress chart is needed.
 
 #### Keycloak
 

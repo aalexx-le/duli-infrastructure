@@ -1,5 +1,0 @@
-apiVersion: v2
-name: argocd-ingress
-description: Ingress configuration for ArgoCD deployed via kubespray
-version: 1.0.0
-appVersion: "2.14.5"
