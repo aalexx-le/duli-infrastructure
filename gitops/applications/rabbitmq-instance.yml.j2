@@ -28,6 +28,7 @@ spec:
     - group: rabbitmq.com
       kind: RabbitmqCluster
       jsonPointers:
+        # Status and metadata (always operator-managed)
         - /status
         - /metadata/generation
         - /metadata/resourceVersion
@@ -35,11 +36,16 @@ spec:
         - /metadata/finalizers
         - /metadata/uid
         - /metadata/creationTimestamp
-        - /metadata/labels/app.kubernetes.io~1instance
+        - /metadata/labels
+        # Spec fields that the operator overrides
         - /spec/delayStartSeconds
         - /spec/override
         - /spec/secretBackend
         - /spec/tls
         - /spec/terminationGracePeriodSeconds
         - /spec/persistence/storage
-        - /spec/affinity/podAntiAffinity/preferredDuringSchedulingIgnoredDuringExecution/0/weight
+        - /spec/affinity
+        - /spec/rabbitmq
+        - /spec/replicas
+        - /spec/resources
+        - /spec/service
