@@ -8,23 +8,14 @@ metadata:
     app.kubernetes.io/name: rabbitmq
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  # Cluster topology
   replicas: {{ .Values.cluster.replicas }}
-
-  # Image configuration
   image: {{ .Values.cluster.image }}
   imagePullPolicy: {{ .Values.cluster.imagePullPolicy }}
-
-  # Service configuration
   service:
     type: {{ .Values.cluster.service.type }}
-
-  # Storage configuration
   persistence:
     storageClassName: {{ .Values.cluster.storage.storageClass }}
     size: {{ .Values.cluster.storage.size }}
-
-  # Resource configuration
   resources:
     requests:
       cpu: {{ .Values.cluster.resources.requests.cpu }}
@@ -32,12 +23,8 @@ spec:
     limits:
       cpu: {{ .Values.cluster.resources.limits.cpu }}
       memory: {{ .Values.cluster.resources.limits.memory }}
-
-  # RabbitMQ configuration
   rabbitmq:
     additionalConfig: {{ .Values.cluster.rabbitmq.additionalConfig | quote }}
-
-  # Pod affinity for distribution across nodes
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
