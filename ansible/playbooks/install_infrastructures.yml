@@ -205,28 +205,28 @@
                 secretName: tls-rancher-ingress
 
     - name: Configure ArgoCD server service as ClusterIP
-       kubernetes.core.k8s:
-         state: patched
-         definition:
-           apiVersion: v1
-           kind: Service
-           metadata:
-             name: argocd-server
-             namespace: argocd
-           spec:
-             type: ClusterIP
-             selector:
-               app.kubernetes.io/name: argocd-server
-             ports:
-               - name: http
-                 port: 80
-                 targetPort: 8080
-                 protocol: TCP
-       register: argocd_service_result
-       retries: 3
-       delay: 10
-       until: argocd_service_result is succeeded
-       run_once: true
+      kubernetes.core.k8s:
+        state: patched
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: argocd-server
+            namespace: argocd
+          spec:
+            type: ClusterIP
+            selector:
+              app.kubernetes.io/name: argocd-server
+            ports:
+              - name: http
+                port: 80
+                targetPort: 8080
+                protocol: TCP
+      register: argocd_service_result
+      retries: 3
+      delay: 10
+      until: argocd_service_result is succeeded
+      run_once: true
 
     - name: Determine environment
       set_fact:
