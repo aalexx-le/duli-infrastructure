@@ -48,18 +48,38 @@
     # ARGOCD APPLICATIONS
     # ============================================================================
 
-    - name: Deploy ArgoCD Applications
+    # Shared resources (only deployed for staging to avoid conflicts)
+    # These resources are shared between prod and staging environments:
+    # - keycloak-db: Shared database for both Keycloak instances
+    # - infrastructure-secrets: Secrets in keycloak-system namespace
+    - name: Deploy Shared ArgoCD Applications (staging only)
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
+      vars:
+        target_env: staging
+      loop:
+        - infrastructure-secrets
+        - keycloak-db
+      loop_control:
+        label: "{{ item }}-staging (shared)"
+      retries: 3
+      delay: 5
+      until: shared_apps_result is succeeded
+      register: shared_apps_result
+      when: current_environment == 'staging'
+
+    # Environment-specific applications
+    - name: Deploy Environment-Specific ArgoCD Applications
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
       vars:
         target_env: "{{ current_environment }}"
       loop:
-        - infrastructure-secrets
         - postgresql-instance
         - rabbitmq-instance
         - redis-instance
-        - keycloak-db
         - keycloak-instance
         - backend
         - ai-service
@@ -71,7 +91,30 @@
       until: argocd_apps_result is succeeded
       register: argocd_apps_result
 
-    - name: Wait for ArgoCD Applications to sync
+    # Wait for shared applications (staging only)
+    - name: Wait for Shared ArgoCD Applications to sync
+      kubernetes.core.k8s_info:
+        kind: Application
+        namespace: argocd
+        name: "{{ item }}-staging"
+        wait: true
+        wait_condition:
+          type: Synced
+          status: "True"
+        wait_sleep: 10
+        wait_timeout: 300
+      loop:
+        - infrastructure-secrets
+        - keycloak-db
+      loop_control:
+        label: "{{ item }}-staging (shared)"
+      retries: 2
+      delay: 15
+      ignore_errors: true
+      when: current_environment == 'staging'
+
+    # Wait for environment-specific applications
+    - name: Wait for Environment-Specific ArgoCD Applications to sync
       kubernetes.core.k8s_info:
         kind: Application
         namespace: argocd
@@ -83,11 +126,9 @@
         wait_sleep: 10
         wait_timeout: 300
       loop:
-        - infrastructure-secrets
         - postgresql-instance
         - rabbitmq-instance
         - redis-instance
-        - keycloak-db
         - keycloak-instance
         - backend
         - ai-service
