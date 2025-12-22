@@ -10,6 +10,7 @@ spec:
     targetRevision: main
     path: helm/keycloak-instance
     helm:
+      releaseName: keycloak-instance-{{ target_env }}
       valueFiles:
         - values.yaml
         - values-{{ target_env }}.yaml

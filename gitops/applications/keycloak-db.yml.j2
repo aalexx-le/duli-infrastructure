@@ -11,6 +11,7 @@ spec:
     targetRevision: {{ git_branch | default('main') }}
     path: helm/keycloak-db
     helm:
+      releaseName: keycloak-db-{{ target_env }}
       valueFiles:
         - values.yaml
         - values-{{ target_env }}.yaml
