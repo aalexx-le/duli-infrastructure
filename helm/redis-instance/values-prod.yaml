@@ -1,14 +1,12 @@
+# Redis Instance - Production Configuration
 redis:
-  # Production: HA with 1 master + 1 replica
-  size: 2
-
-  # Storage class for DigitalOcean (production)
-  storage:
-    storageClassName: do-block-storage
-    size: 10Gi
+  name: redis-replication
+  mode: Replication
+  size: 2  # 1 master + 1 replica
 
   kubernetesConfig:
-    # Production resource limits (optimized for small nodes)
+    image: quay.io/opstree/redis:v7.0.12
+    imagePullPolicy: IfNotPresent
     resources:
       requests:
         cpu: 100m
@@ -17,3 +15,13 @@ redis:
         cpu: 500m
         memory: 512Mi
 
+  storage:
+    size: 10Gi
+    storageClassName: do-block-storage
+
+  service:
+    type: ClusterIP
+
+  redisSecret:
+    name: redis-credentials
+    key: password

@@ -1,34 +1,8 @@
+# Redis Instance - Base Configuration
+# Environment-specific values are in values-staging.yaml and values-prod.yaml
 redis:
   name: redis-replication
-  # Mode: Standalone, Cluster, or Replication
-  # Replication mode provides HA with master-replica setup (similar to old Sentinel)
   mode: Replication
-  # Number of replicas (master + replicas = size)
-  size: 2 # 1 master + 1 replica
-
-  kubernetesConfig:
-    image: quay.io/opstree/redis:v7.0.12
-    imagePullPolicy: IfNotPresent
-
-    # Resource limits (matching old Bitnami Redis setup)
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: 100m
-        memory: 256Mi
-
-  storage:
-    size: 5Gi # Increased from 1Gi to match old setup
-    storageClassName: do-block-storage
-
-  # Service configuration - ClusterIP is sufficient
-  # Apps connect via internal DNS (redis-replication-master.{namespace}.svc)
-  # External access available via ingress-nginx TCP passthrough if needed
-  service:
-    type: ClusterIP
-
   redisSecret:
     name: redis-credentials
     key: password
