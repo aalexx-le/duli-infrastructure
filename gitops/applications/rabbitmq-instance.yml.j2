@@ -31,9 +31,12 @@ spec:
         - /status
         - /metadata/generation
         - /metadata/resourceVersion
-        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
+        - /metadata/annotations
+        - /metadata/finalizers
+        - /metadata/uid
+        - /metadata/creationTimestamp
         - /spec/persistence
-        - /override
+        - /spec/override
         - /spec/delayStartSeconds
         - /spec/affinity
         - /spec/secretBackend
