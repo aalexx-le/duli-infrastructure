@@ -23,7 +23,7 @@ spec:
   - "duli.one"
   - "*.duli.one"
   issuerRef:
-    name: {{ .Values.wildcardCertificate.issuer | default "letsencrypt-prod" }}
+    name: {{ .Values.wildcardCertificate.issuer | default "letsencrypt" }}
     kind: ClusterIssuer
   secretTemplate:
     annotations:

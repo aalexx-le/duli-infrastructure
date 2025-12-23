@@ -32,4 +32,4 @@ cluster:
 ingress:
   enabled: true
   host: queue-staging.duli.one
-  clusterIssuer: letsencrypt-prod
+  # clusterIssuer removed - using wildcard certificate via Reflector

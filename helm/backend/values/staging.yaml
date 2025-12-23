@@ -101,7 +101,7 @@ ingress:
   host: "api.duli.one"
   path: /
   pathType: Prefix
-  clusterIssuer: "letsencrypt-prod"
+  # clusterIssuer removed - using wildcard certificate via Reflector
   proxyBodySize: "100m"
   proxyReadTimeout: "600"
   proxySendTimeout: "600"

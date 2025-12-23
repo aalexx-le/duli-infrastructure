@@ -25,5 +25,5 @@ wildcardCertificate:
   enabled: true
   # Namespace where the certificate secret will be created
   namespace: "cert-manager"
-  # ClusterIssuer to use (letsencrypt-staging for testing, letsencrypt-prod for production)
-  issuer: "letsencrypt-prod"
+  # ClusterIssuer to use (letsencrypt)
+  issuer: "letsencrypt"
