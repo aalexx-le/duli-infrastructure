@@ -1,0 +1,20 @@
+# Reflector configuration
+# Values passed to upstream emberstack/reflector chart
+
+reflector:
+  nameOverride: ""
+  fullnameOverride: ""
+  
+  # Resource limits
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  
+  # Logging level (Verbose, Debug, Information, Warning, Error, Fatal)
+  configuration:
+    logging:
+      minimumLevel: Information

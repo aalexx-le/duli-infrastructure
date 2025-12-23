@@ -160,6 +160,7 @@
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
       loop:
         - sealed-secrets-controller
+        - reflector
         - cert-manager-issuers
         - cloudnative-pg-operator
         - rabbitmq-operator
@@ -189,6 +190,7 @@
         wait_timeout: 300
       loop:
         - sealed-secrets-controller
+        - reflector
         - cert-manager-issuers
         - cloudnative-pg-operator
         - rabbitmq-operator

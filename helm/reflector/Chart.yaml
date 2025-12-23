@@ -1,0 +1,11 @@
+apiVersion: v2
+name: reflector
+description: Kubernetes Reflector for copying secrets and configmaps across namespaces
+type: application
+version: 1.0.0
+appVersion: "7.1.288"
+
+dependencies:
+  - name: reflector
+    version: "7.1.288"
+    repository: https://emberstack.github.io/helm-charts
