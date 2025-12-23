@@ -97,6 +97,7 @@ grafana:
           memory: 32Mi
     datasources:
       enabled: true
+      defaultDatasourceEnabled: false  # Disable built-in Prometheus datasource (we define custom ones)
       resources:
         limits:
           cpu: 50m
