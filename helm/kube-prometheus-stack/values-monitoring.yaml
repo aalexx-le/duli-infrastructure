@@ -1,45 +1,3 @@
-# Kube Prometheus Stack - PRODUCTION-READY Configuration
-# Chart: prometheus-community/kube-prometheus-stack v80.6.0
-# Full monitoring with Prometheus + Grafana + Loki integration
-
-# Enable all essential monitoring rules
-defaultRules:
-  create: true
-  rules:
-    alertmanager: true
-    etcd: false  # Not accessible on managed K8s
-    configReloaders: true
-    general: true
-    k8sContainerCpuUsageSecondsTotal: true
-    k8sContainerMemoryCache: true
-    k8sContainerMemoryRss: true
-    k8sContainerMemorySwap: true
-    k8sContainerResource: true
-    k8sPodOwner: true
-    kubeApiserverAvailability: false
-    kubeApiserverBurnrate: false
-    kubeApiserverHistogram: false
-    kubeApiserverSlos: false
-    kubeControllerManager: false  # Not accessible on managed K8s
-    kubelet: true
-    kubeProxy: false
-    kubePrometheusGeneral: true
-    kubePrometheusNodeRecording: true
-    kubernetesApps: true
-    kubernetesResources: true
-    kubernetesStorage: true
-    kubernetesSystem: false
-    kubeSchedulerAlerting: false
-    kubeSchedulerRecording: false
-    kubeStateMetrics: true
-    network: true
-    node: true
-    nodeExporterAlerting: true
-    nodeExporterRecording: true
-    prometheus: true
-    prometheusOperator: true
-    windows: false
-
 # Alertmanager
 alertmanager:
   enabled: true
@@ -79,7 +37,7 @@ grafana:
     storageClassName: do-block-storage
     accessModes:
       - ReadWriteOnce
-    size: 5Gi
+    size: 1Gi
   
   ingress:
     enabled: true
@@ -153,7 +111,7 @@ prometheus:
   prometheusSpec:
     replicas: 1
     retention: 7d  # 7 days retention
-    retentionSize: "8GB"
+    retentionSize: "6300MB"  # Leave ~700MB buffer for 7Gi storage
     
     # Auto-discover ServiceMonitors in all namespaces
     serviceMonitorSelectorNilUsesHelmValues: false
@@ -179,7 +137,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 2Gi
     
     # Resources
     resources:
@@ -231,15 +189,6 @@ kube-state-metrics:
       cpu: 20m
       memory: 64Mi
 
-# Disable control plane monitoring (not accessible on managed k8s)
-kubeControllerManager:
-  enabled: false
-kubeScheduler:
-  enabled: false
-kubeProxy:
-  enabled: false
-kubeEtcd:
-  enabled: false
 
 # Disable thanos
 thanosRuler:
