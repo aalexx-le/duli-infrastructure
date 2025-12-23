@@ -7,9 +7,6 @@ metadata:
   labels:
     {{- include "backend.labels" . | nindent 4 }}
   annotations:
-    # Cert-manager automatic certificate management
-    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | quote }}
-    # NGINX ingress annotations
     nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.proxyBodySize | default "100m" | quote }}
     nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.proxyReadTimeout | default "600" | quote }}
     nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.proxySendTimeout | default "600" | quote }}

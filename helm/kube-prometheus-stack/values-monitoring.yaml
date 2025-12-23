@@ -42,12 +42,10 @@ grafana:
   ingress:
     enabled: true
     ingressClassName: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
     hosts:
       - grafana.duli.one
     tls:
-      - secretName: grafana-tls
+      - secretName: duli-one-wildcard-tls
         hosts:
           - grafana.duli.one
   

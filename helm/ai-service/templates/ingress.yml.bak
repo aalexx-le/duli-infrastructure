@@ -3,14 +3,17 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "ai-service.fullname" . }}
+  name: {{ include "backend.fullname" . }}
   labels:
-    {{- include "ai-service.labels" . | nindent 4 }}
+    {{- include "backend.labels" . | nindent 4 }}
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.proxyBodySize | default "500m" | quote }}
-    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.proxyReadTimeout | default "3600" | quote }}
-    nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.proxySendTimeout | default "3600" | quote }}
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: {{ .Values.ingress.proxyConnectTimeout | default "600" | quote }}
+    # NOTE: Using pre-provisioned wildcard certificate (duli-one-wildcard-tls)
+    # managed by cert-manager-issuers chart. Secret is copied to this namespace
+    # via Reflector. Do NOT add cert-manager.io/cluster-issuer annotation.
+    # NGINX ingress annotations
+    nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.proxyBodySize | default "100m" | quote }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.proxyReadTimeout | default "600" | quote }}
+    nginx.ingress.kubernetes.io/proxy-send-timeout: {{ .Values.ingress.proxySendTimeout | default "600" | quote }}
     {{- if .Values.ingress.enableCors }}
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: {{ .Values.ingress.corsAllowOrigin | default "*" | quote }}
@@ -26,7 +29,7 @@ spec:
   tls:
   - hosts:
     - {{ .Values.ingress.host | quote }}
-    secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" (include "ai-service.fullname" .)) }}
+    secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" (include "backend.fullname" .)) }}
   {{- end }}
   rules:
   - host: {{ .Values.ingress.host | quote }}
@@ -36,7 +39,7 @@ spec:
         pathType: {{ .Values.ingress.pathType | default "Prefix" }}
         backend:
           service:
-            name: {{ include "ai-service.fullname" . }}
+            name: {{ include "backend.fullname" . }}
             port:
               number: {{ .Values.service.port }}
 {{- end }}

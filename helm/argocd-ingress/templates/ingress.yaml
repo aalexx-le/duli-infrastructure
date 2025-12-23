@@ -4,9 +4,6 @@ metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    # NOTE: Using pre-provisioned wildcard certificate (duli-one-wildcard-tls)
-    # managed by cert-manager-issuers chart. Secret is copied to this namespace
-    # via Reflector. Do NOT add cert-manager.io/cluster-issuer annotation.
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
