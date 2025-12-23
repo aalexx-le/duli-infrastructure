@@ -20,7 +20,7 @@ spec:
         - name: grafana.ingress.tls[0].hosts[0]
           value: "{{ domain_grafana }}"
         - name: grafana.ingress.tls[0].secretName
-          value: grafana-tls
+          value: duli-one-wildcard-tls
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
