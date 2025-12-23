@@ -78,6 +78,8 @@ gateway:
       memory: 32Mi
   ingress:
     enabled: false  # Internal only
+  nginxConfig:
+    resolver: "coredns.kube-system.svc.cluster.local"
 
 # Disable MinIO - use filesystem
 minio:
