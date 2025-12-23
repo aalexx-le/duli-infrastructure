@@ -16,11 +16,11 @@ cluster:
   # NOTE: RabbitMQ requires memory.requests == memory.limits
   resources:
     requests:
-      cpu: 75m
-      memory: 160Mi
+      cpu: 150m
+      memory: 320Mi
     limits:
-      cpu: 200m
-      memory: 160Mi
+      cpu: 400m
+      memory: 320Mi
   
   rabbitmq:
     additionalConfig: |
