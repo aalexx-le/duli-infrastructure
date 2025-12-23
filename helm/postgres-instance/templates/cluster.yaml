@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.cluster.name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: postgresql-cnpg
+    app.kubernetes.io/name: postgres-instance
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   description: "PostgreSQL HA Cluster"
@@ -50,4 +50,9 @@ spec:
   storage:
     size: {{ .Values.cluster.storage.size }}
     storageClass: {{ .Values.cluster.storage.storageClass }}
+
+  {{- if .Values.cluster.monitoring.enabled }}
+  monitoring:
+    enablePodMonitor: true
+  {{- end }}
 {{- end }}

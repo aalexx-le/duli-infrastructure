@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://ot-container-kit.github.io/helm-charts
-    targetRevision: 0.22.2
-    chart: redis-operator
+    repoURL: "{{ git_repo_url }}"
+    targetRevision: {{ git_branch | default('main') }}
+    path: helm/redis-operator
   destination:
     server: https://kubernetes.default.svc
     namespace: redis-operator-system

@@ -158,7 +158,31 @@
         current_environment: "{{ target_environment }}"
       run_once: true
 
-    - name: Deploy shared ArgoCD Applications (run once)
+    - name: Ensure monitoring namespace exists
+      kubernetes.core.k8s:
+        name: monitoring
+        api_version: v1
+        kind: Namespace
+        state: present
+      run_once: true
+
+    - name: Create Cloudflare API token secret for monitoring namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: cloudflare-api-token
+            namespace: monitoring
+          type: Opaque
+          stringData:
+            api-token: "{{ vault_cloudflare_api_token }}"
+      when: vault_cloudflare_api_token is defined
+      no_log: true
+      run_once: true
+
+    - name: Deploy shared ArgoCD Applications
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
@@ -170,6 +194,8 @@
         - keycloak-operator
         - redis-operator
         - argocd-ingress
+        - kube-prometheus-stack
+        - loki
       loop_control:
         label: "{{ item }}"
       retries: 3
@@ -197,92 +223,10 @@
         - keycloak-operator
         - redis-operator
         - argocd-ingress
+        - kube-prometheus-stack
+        - loki
       loop_control:
         label: "{{ item }}"
       retries: 2
       delay: 15
-      run_once: true
-
-    # =========================================================================
-    # MONITORING STACK DEPLOYMENT
-    # =========================================================================
-    # Deploys shared monitoring infrastructure to 'monitoring' namespace.
-    # Collects metrics and logs from ALL namespaces (staging, prod, etc.)
-
-    - name: Create monitoring namespace
-      kubernetes.core.k8s:
-        name: monitoring
-        api_version: v1
-        kind: Namespace
-        state: present
-      run_once: true
-
-    - name: Create Grafana admin credentials secret
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: grafana-admin-credentials
-            namespace: monitoring
-          type: Opaque
-          stringData:
-            admin-user: admin
-            admin-password: "{{ vault_grafana_admin_password }}"
-      when: vault_grafana_admin_password is defined
-      no_log: true
-      run_once: true
-
-    - name: Create Cloudflare API token secret for monitoring namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: cloudflare-api-token
-            namespace: monitoring
-          type: Opaque
-          stringData:
-            api-token: "{{ vault_cloudflare_api_token }}"
-      when: vault_cloudflare_api_token is defined
-      no_log: true
-      run_once: true
-
-    - name: Deploy Monitoring ArgoCD Applications
-      kubernetes.core.k8s:
-        state: present
-        definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
-      loop:
-        - kube-prometheus-stack
-        - loki
-      loop_control:
-        label: "{{ item }}"
-      retries: 3
-      delay: 5
-      until: argocd_monitoring_apps_result is succeeded
-      register: argocd_monitoring_apps_result
-      when: monitoring_prometheus_stack_enabled | default(true) | bool
-      run_once: true
-
-    - name: Wait for Monitoring ArgoCD Applications to sync
-      kubernetes.core.k8s_info:
-        kind: Application
-        namespace: argocd
-        name: "{{ item }}"
-        wait: true
-        wait_condition:
-          type: Synced
-          status: "True"
-        wait_sleep: 10
-        wait_timeout: 600
-      loop:
-        - kube-prometheus-stack
-        - loki
-      loop_control:
-        label: "{{ item }}"
-      retries: 3
-      delay: 30
-      when: monitoring_prometheus_stack_enabled | default(true) | bool
       run_once: true

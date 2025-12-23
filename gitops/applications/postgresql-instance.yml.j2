@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: {{ git_repo_url }}
     targetRevision: {{ git_branch | default('main') }}
-    path: helm/postgresql-cnpg
+    path: helm/postgres-instance
     helm:
       valueFiles:
         - values.yaml

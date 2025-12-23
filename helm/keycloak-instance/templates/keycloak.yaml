@@ -32,3 +32,9 @@ spec:
   http:
     httpEnabled: true
     httpsPort: 8443
+  {{- if .Values.monitoring.enabled }}
+  serviceMonitor:
+    enabled: {{ .Values.monitoring.enabled }}
+    interval: {{ .Values.monitoring.interval }}
+    scrapeTimeout: {{ .Values.monitoring.scrapeTimeout }}
+  {{- end }}

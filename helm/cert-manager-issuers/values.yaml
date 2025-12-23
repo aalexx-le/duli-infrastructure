@@ -19,14 +19,6 @@ cloudflare:
   # In production, use: --set cloudflare.apiToken=$CLOUDFLARE_API_TOKEN
   apiToken: ""
 
-# DigitalOcean Configuration for DNS-01 Challenge (alternative to Cloudflare)
-digitalocean:
-  # Whether to create the API token secret via Helm
-  # Set to false if using SealedSecrets or external-secrets
-  createSecret: false
-  # API token value (only used if createSecret: true)
-  accessToken: ""
-
 # Wildcard Certificate Configuration
 wildcardCertificate:
   # Enable pre-provisioned wildcard certificate

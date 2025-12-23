@@ -42,7 +42,6 @@ vault_keycloak_db_password: "your_keycloak_db_password_here"
 
 # GitOps Tools
 vault_argocd_admin_password: "your_argocd_admin_password_here"
-vault_rancher_bootstrap_password: "your_rancher_bootstrap_password_here"
 
 # Monitoring Stack (Secret: grafana-admin-credentials)
 vault_grafana_admin_password: "your_grafana_admin_password_here"
