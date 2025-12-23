@@ -61,8 +61,8 @@
         keycloak_admin_pass: "{{ keycloak_admin_secret.resources[0].data.password | b64decode }}"
         argocd_admin_user: "admin"
         argocd_admin_pass: "{{ vault_argocd_admin_password }}"
-        rancher_admin_user: "admin"
-        rancher_admin_pass: "{{ vault_rancher_bootstrap_password }}"
+        grafana_admin_user: "admin"
+        grafana_admin_pass: "{{ vault_grafana_admin_password }}"
 
     - name: Write connection information
       template:

@@ -17,6 +17,13 @@ cluster:
   
   postgresql:
     parameters: {}
-
+  
+  storage:
+    size: 10Gi
+    storageClass: do-block-storage
+  
   service:
     type: ClusterIP
+  
+  monitoring:
+    enabled: false
