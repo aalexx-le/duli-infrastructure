@@ -27,3 +27,9 @@ cluster:
     limits:
       cpu: 400m
       memory: 384Mi
+
+  monitoring:
+    enabled: true
+  
+  backup:
+    enabled: false
