@@ -24,7 +24,6 @@ domain_ai: "ai.{{ domain_base }}"             # AI service
 domain_scheduler: "n8n.{{ domain_base }}"     # n8n scheduler
 domain_auth: "auth.{{ domain_base }}"         # Keycloak authentication
 domain_argocd: "argocd.{{ domain_base }}"     # ArgoCD UI
-domain_rancher: "rancher.{{ domain_base }}"   # Rancher UI
 domain_grafana: "grafana.{{ domain_base }}"   # Grafana monitoring UI
 
 # TLS Configuration
@@ -46,32 +45,21 @@ cloudflare_email: "admin@duli.one"
 # All deployed by install_infrastructures.yml playbook.
 #
 # NOTE: ArgoCD is now deployed by kubespray (see kubernetes-runtime.yml)
-# Only Cert-Manager and Rancher remain as Helm-deployed tools
+# Only Cert-Manager remains as Helm-deployed tool
 
 # Cert-Manager - Certificate Management
 # Reference: https://github.com/cert-manager/cert-manager/releases
 # Used by: install_infrastructures.yml
 helm_cert_manager_chart_version: "1.16.0"  # App version: v1.16.0, K8s 1.27+
 
-# Rancher - Kubernetes Management Platform
-# Reference: https://github.com/rancher/rancher/releases
-# Used by: install_infrastructures.yml
-helm_rancher_chart_version: "2.13.0"  # App version: v2.13.0, K8s 1.32+
-
 # ============================================================================
 # GITOPS TOOLS - SERVICE TYPES
 # ============================================================================
-# Service type configuration for ArgoCD and Rancher.
+# Service type configuration for ArgoCD.
 # With ingress-nginx enabled, services use ClusterIP and are accessed via Ingress.
 
 # ArgoCD service type: ClusterIP (accessed via Ingress at argocd.duli.one)
 argocd_service_type: ClusterIP
-
-# Rancher service type: ClusterIP (accessed via Ingress at rancher.duli.one)
-rancher_service_type: ClusterIP
-
-# Rancher hostname for ingress
-rancher_hostname: "rancher.{{ domain_base }}"
 
 # ============================================================================
 # MONITORING STACK - CONFIGURATION
