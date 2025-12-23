@@ -14,10 +14,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - "{{ argocd_hostname | default('argocd.duli.one') }}"
+    - "{{ .Values.hostname }}"
     secretName: duli-one-wildcard-tls
   rules:
-  - host: "{{ argocd_hostname | default('argocd.duli.one') }}"
+  - host: "{{ .Values.hostname }}"
     http:
       paths:
       - path: /
