@@ -75,7 +75,6 @@ infrastructure-kubernetes/
 │   ├── rabbitmq-ha-values.yml.j2    # Infrastructure service values (Ansible)
 │   ├── cert-manager-values.yml.j2   # GitOps tool values (Ansible)
 │   ├── argocd-values.yml.j2         # GitOps tool values (Ansible)
-│   └── rancher-values.yml.j2        # GitOps tool values (Ansible)
 ├── gitops/                          # GitOps configuration
 │   └── applications/                # ArgoCD application templates
 ├── kubespray/                       # Kubernetes cluster installer (vendored)
@@ -90,7 +89,7 @@ Main entry: `ansible/playbooks/site.yml` (orchestrates all phases)
 - `kubespray.yml` - Kubernetes cluster provisioning (includes ingress-nginx with TCP passthrough)
 - `do_csi_driver.yml` - DigitalOcean Block Storage CSI driver installation
 - `do_cloud_controller_manager.yml` - DigitalOcean Cloud Controller Manager
-- `install_infrastructures.yml` - Cert-Manager, Rancher, ArgoCD, operators
+- `install_infrastructures.yml` - Cert-Manager, ArgoCD, operators
 - `setup_dns.yml` - DNS records and SSL/TLS settings (for external access)
 - `generate_sealed_secrets.yml` - Sealed secrets generation
 - `deploy_applications.yml` - Application services deployment
@@ -100,7 +99,7 @@ Main entry: `ansible/playbooks/site.yml` (orchestrates all phases)
 1. `kubespray.yml` - Creates Kubernetes cluster with ingress-nginx (LoadBalancer with TCP ports for external access)
 2. `do_csi_driver.yml` - Installs DigitalOcean CSI driver (creates `do-block-storage` StorageClass)
 3. `do_cloud_controller_manager.yml` - Installs DigitalOcean CCM for LoadBalancer support
-4. `install_infrastructures.yml` - Deploys Cert-Manager, Rancher, ArgoCD, infrastructure operators
+4. `install_infrastructures.yml` - Deploys Cert-Manager, ArgoCD, infrastructure operators
 5. `setup_dns.yml` - Configures DNS records and SSL/TLS settings for external access
 6. `generate_sealed_secrets.yml` - Generates sealed secrets
 7. `deploy_applications.yml` - Deploys application services via ArgoCD
@@ -179,7 +178,6 @@ ansible/inventories/
 **GitOps Tools** (Ansible-managed installation, auto-synced via GitOps):
 - Cert-Manager (TLS certificates)
 - ArgoCD (continuous deployment)
-- Rancher (multi-cluster management)
 - Configuration: `helm/values/{tool}-values.yml.j2`
 
 **Applications** (ArgoCD-managed GitOps):
@@ -722,7 +720,6 @@ This project follows a **hybrid architecture** separating Infrastructure as Code
 - PostgreSQL HA, Redis HA, RabbitMQ HA (stateful data services)
 - Cert-Manager (TLS certificate management)
 - ArgoCD (GitOps continuous deployment tool itself)
-- Rancher (multi-cluster management)
 
 **Why IaC?**
 - Stateful services that require initial database setup
@@ -752,7 +749,7 @@ This project follows a **hybrid architecture** separating Infrastructure as Code
 STEP 1: IaC Bootstrap (Ansible - runs once)
   ├─ ansible-playbook site.yml
   ├─ Deploys: K8s, CSI driver, PostgreSQL, Redis, RabbitMQ
-  ├─ Installs: Cert-Manager, ArgoCD, Rancher
+  ├─ Installs: Cert-Manager, ArgoCD
   └─ Creates: ArgoCD Application CRDs (bootstrap)
 
      ↓
@@ -797,7 +794,6 @@ helm/
 ├── rabbitmq-ha-values.yml.j2     # Infrastructure service values (Ansible)
 ├── cert-manager-values.yml.j2    # Platform tool values (Ansible)
 ├── argocd-values.yml.j2          # Platform tool values (Ansible)
-└── rancher-values.yml.j2         # Platform tool values (Ansible)
 ```
 
 ### Design
