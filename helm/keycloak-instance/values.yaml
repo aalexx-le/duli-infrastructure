@@ -20,6 +20,8 @@ service:
   targetPort: 8080
 
 # Prometheus monitoring
+# NOTE: Keycloak 26+ has built-in Prometheus metrics support
+# Metrics are exposed on /metrics endpoint
 monitoring:
   enabled: true
   interval: 30s

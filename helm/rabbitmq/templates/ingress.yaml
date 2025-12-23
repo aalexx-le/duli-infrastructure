@@ -16,7 +16,7 @@ spec:
   tls:
     - hosts:
         - {{ .Values.ingress.host }}
-      secretName: rabbitmq-management-tls
+      secretName: duli-one-wildcard-tls
   rules:
     - host: {{ .Values.ingress.host }}
       http:

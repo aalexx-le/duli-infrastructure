@@ -30,7 +30,7 @@ spec:
   tls:
   - hosts:
     - {{ .Values.ingress.host | quote }}
-    secretName: {{ .Values.ingress.tls.secretName | default "keycloak-tls" }}
+    secretName: {{ .Values.ingress.tls.secretName | default "duli-one-wildcard-tls" }}
   {{- end }}
   rules:
   - host: {{ .Values.ingress.host | quote }}
