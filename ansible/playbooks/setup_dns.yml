@@ -24,9 +24,6 @@
       - name: "argocd"
         type: "A"
         proxied: yes
-      - name: "rancher"
-        type: "A"
-        proxied: yes
       - name: "grafana"
         type: "A"
         proxied: yes
