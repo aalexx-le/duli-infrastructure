@@ -7,8 +7,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/aalexx-le/duli-infrastructure.git
-    targetRevision: HEAD
+    repoURL: {{ git_repo_url }}
+    targetRevision: {{ git_branch | default('main') }}
     path: helm/reflector
   destination:
     server: https://kubernetes.default.svc
@@ -18,4 +18,4 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - CreateNamespace=false
