@@ -13,14 +13,14 @@ keycloak:
   # Use 'xforwarded' to match NGINX X-Forwarded-* headers (not RFC 7239 Forwarded header)
   proxy:
     headers: "xforwarded"
-  # Resource limits for small cluster
+  # Resource limits - Keycloak needs sufficient memory for JVM
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 100m
+      memory: 512Mi
     limits:
-      cpu: 75m
-      memory: 256Mi
+      cpu: 500m
+      memory: 768Mi
 
 # Service configuration - ClusterIP since accessed via Ingress
 service:
