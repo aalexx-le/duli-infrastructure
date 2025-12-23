@@ -35,18 +35,13 @@
       block:
         - name: Check if Helm repositories exist
           command: helm repo list
-          register: helm_repos_argo
+          register: helm_repos_check
           changed_when: false
-
-        - name: Add Argo Helm repository
-          command: helm repo add argo https://argoproj.github.io/argo-helm
-          when: "'argo' not in helm_repos_argo.stdout"
-          changed_when: "'argo' not in helm_repos_argo.stdout"
 
         - name: Add Jetstack Helm repository (cert-manager)
           command: helm repo add jetstack https://charts.jetstack.io
-          when: "'jetstack' not in helm_repos_argo.stdout"
-          changed_when: "'jetstack' not in helm_repos_argo.stdout"
+          when: "'jetstack' not in helm_repos_check.stdout"
+          changed_when: "'jetstack' not in helm_repos_check.stdout"
 
         - name: Update all Helm repositories
           command: helm repo update
@@ -90,11 +85,12 @@
           metadata:
             name: "{{ item }}"
       loop:
+        - cert-manager
         - argocd
         - keycloak-system
       run_once: true
 
-    - name: Create Cloudflare API token secret (shared namespaces)
+    - name: Create Cloudflare API token secret
       kubernetes.core.k8s:
         state: present
         definition:
@@ -128,30 +124,6 @@
             api-token: "{{ vault_cloudflare_api_token }}"
       when: vault_cloudflare_api_token is defined
       no_log: true
-
-    - name: Configure ArgoCD server service as ClusterIP
-      kubernetes.core.k8s:
-        state: patched
-        definition:
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: argocd-server
-            namespace: argocd
-          spec:
-            type: ClusterIP
-            selector:
-              app.kubernetes.io/name: argocd-server
-            ports:
-              - name: http
-                port: 80
-                targetPort: 8080
-                protocol: TCP
-      register: argocd_service_result
-      retries: 3
-      delay: 10
-      until: argocd_service_result is succeeded
-      run_once: true
 
     - name: Determine environment
       set_fact:

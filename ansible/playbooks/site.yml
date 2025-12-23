@@ -4,7 +4,7 @@
 - import_playbook: do_csi_driver.yml
 - import_playbook: do_cloud_controller_manager.yml
 
-# Deploy core infrastructure (Cert-Manager, Rancher, ArgoCD, sealed-secrets controller, operators)
+# Deploy core infrastructure (Cert-Manager, operators, ArgoCD Applications)
 - import_playbook: install_infrastructures.yml
 
 # Configure DNS and SSL
