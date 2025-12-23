@@ -6,7 +6,7 @@ keycloak:
     vendor: postgres
     host: keycloak-db-prod-rw.keycloak-system.svc.cluster.local
     database: keycloak
-    secretName: keycloak-db-prod-credentials
+    secretName: keycloak-db-credentials
   tls:
     enabled: false  # TLS terminates at ingress level
   # Proxy configuration - replaces deprecated 'proxy' option

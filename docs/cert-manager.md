@@ -8,56 +8,72 @@ This document describes how TLS certificates are managed across all services in 
 graph TB
     subgraph External["🌐 External Services"]
         LE["🔐 Let's Encrypt<br/>(ACME)"]
-        CF["☁️ Cloudflare<br/>DNS Provider"]
+        CF["☁️ Cloudflare<br/>DNS + Proxy"]
     end
     
-    subgraph CertManager["📜 CERT-MANAGER"]
-        subgraph Issuers["ClusterIssuers"]
-            PROD["letsencrypt-prod"]
-            STAGE["letsencrypt-staging"]
-            SELF["selfsigned"]
-        end
-        
+    subgraph CertManager["📜 CERT-MANAGER (cert-manager namespace)"]
+        ISSUER["ClusterIssuer<br/>letsencrypt"]
         CERT["📄 Certificate<br/>duli-one-wildcard<br/>duli.one + *.duli.one"]
-        SECRET["🔑 Secret<br/>duli-one-wildcard-tls<br/>namespace: cert-manager"]
+        SECRET["🔑 Secret<br/>duli-one-wildcard-tls"]
         
-        PROD --> CERT
+        ISSUER --> CERT
         CERT --> SECRET
     end
     
-    subgraph Reflector["🔄 Reflector"]
-        COPY["Copies to namespaces:<br/>staging, prod, argocd,<br/>keycloak-system"]
+    subgraph Reflector["🔄 Reflector Operator"]
+        COPY["Auto-copies secret to:<br/>staging, prod, argocd,<br/>keycloak-system, monitoring"]
     end
     
     subgraph Ingress["🚪 INGRESS-NGINX"]
-        TLS["TLS Termination Point<br/>Receives external HTTPS"]
+        TLS["TLS Termination<br/>(Origin Server)"]
     end
     
-    subgraph Services["🖥️ Backend Services (HTTP internal)"]
+    subgraph CloudflareEdge["☁️ Cloudflare Edge"]
+        EDGE["Edge TLS<br/>(Google Trust Services)"]
+    end
+    
+    subgraph Services["🖥️ Backend Services (HTTP)"]
         ARGOCD["ArgoCD"]
         KEYCLOAK["Keycloak"]
         BACKEND["Backend API"]
         SCHEDULER["Scheduler"]
         RABBITMQ["RabbitMQ UI"]
-        FUTURE["Future Services"]
     end
     
     LE <-->|"DNS-01 Challenge"| CF
     LE -->|"Issues Certificate"| CertManager
     SECRET --> COPY
     COPY --> TLS
+    CloudflareEdge -->|"Full (Strict) SSL"| TLS
     TLS --> Services
     
     classDef external fill:#e3f2fd,stroke:#1976d2,color:#000
     classDef certmgr fill:#fff3e0,stroke:#e65100,color:#000
     classDef ingress fill:#e8f5e9,stroke:#2e7d32,color:#000
+    classDef cloudflare fill:#f3e5f5,stroke:#7b1fa2,color:#000
     classDef services fill:#fce4ec,stroke:#c2185b,color:#000
     
     class LE,CF external
-    class Issuers,PROD,STAGE,SELF,CERT,SECRET certmgr
+    class ISSUER,CERT,SECRET certmgr
     class TLS ingress
-    class ARGOCD,KEYCLOAK,BACKEND,SCHEDULER,RABBITMQ,FUTURE services
+    class EDGE,CloudflareEdge cloudflare
+    class ARGOCD,KEYCLOAK,BACKEND,SCHEDULER,RABBITMQ services
 ```
+
+## Architecture
+
+### Two-Layer TLS
+
+Traffic flows through two TLS layers:
+
+1. **Cloudflare Edge** (public-facing): Cloudflare terminates TLS from browsers using its own edge certificate (Google Trust Services)
+2. **Origin Server** (ingress-nginx): Origin uses Let's Encrypt wildcard certificate for Cloudflare↔Origin encryption
+
+```
+Browser → [Cloudflare Edge TLS] → Cloudflare → [Origin TLS] → Ingress-NGINX → HTTP → Services
+```
+
+**SSL Mode:** Full (Strict) - Cloudflare validates origin certificate is trusted
 
 ## Components
 
@@ -65,7 +81,7 @@ graph TB
 
 **Namespace:** `cert-manager`
 
-Cert-manager is installed via Ansible in `install_infrastructures.yml`:
+Installed via Ansible in `install_infrastructures.yml`:
 
 ```yaml
 - name: Install Cert-Manager
@@ -77,36 +93,42 @@ Cert-manager is installed via Ansible in `install_infrastructures.yml`:
       installCRDs: true
 ```
 
-### 2. ClusterIssuers
+### 2. ClusterIssuer
 
-ClusterIssuers are cluster-scoped resources that can issue certificates in any namespace.
+Single ClusterIssuer for production certificates.
 
 **Location:** `helm/cert-manager-issuers/templates/cluster-issuers.yaml`
 
-| Issuer | Purpose | ACME Server |
-|--------|---------|-------------|
-| `letsencrypt-prod` | Production certificates (trusted by browsers) | `acme-v02.api.letsencrypt.org` |
-| `letsencrypt-staging` | Testing (untrusted, higher rate limits) | `acme-staging-v02.api.letsencrypt.org` |
-| `selfsigned-issuer` | Internal/testing certificates | N/A |
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@duli.one
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+    - dns01:
+        cloudflare:
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+```
 
 ### 3. DNS-01 Challenge via Cloudflare
 
-We use DNS-01 challenge instead of HTTP-01 for these reasons:
+DNS-01 challenge is required because:
 
 | Feature | DNS-01 | HTTP-01 |
 |---------|--------|---------|
 | Wildcard certificates | ✅ Supported | ❌ Not supported |
 | Works behind Cloudflare proxy | ✅ Yes | ❌ Often fails |
 | Requires public HTTP endpoint | ❌ No | ✅ Yes |
-| Firewall requirements | None | Port 80 open |
 
 **Cloudflare API Token Secret:**
-
-The token is created in `install_infrastructures.yml` and stored in multiple namespaces:
-- `cert-manager` (for certificate issuance)
-- `argocd`
-- `keycloak-system`
-- `staging` / `prod`
 
 ```yaml
 apiVersion: v1
@@ -119,11 +141,15 @@ stringData:
   api-token: "<CLOUDFLARE_API_TOKEN>"
 ```
 
+Required permissions:
+- **Zone:DNS:Edit** - Create/delete TXT records
+- **Zone:Zone:Read** - List zones
+
 ### 4. Wildcard Certificate
 
 **Location:** `helm/cert-manager-issuers/templates/wildcard-certificate.yaml`
 
-A single wildcard certificate covers all subdomains:
+Single wildcard certificate covers all subdomains:
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -135,153 +161,101 @@ spec:
   secretName: duli-one-wildcard-tls
   duration: 2160h    # 90 days
   renewBefore: 720h  # 30 days before expiry
-  commonName: "duli.one"
   dnsNames:
   - "duli.one"
   - "*.duli.one"
   issuerRef:
-    name: letsencrypt-prod
+    name: letsencrypt
     kind: ClusterIssuer
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "staging,prod,argocd,keycloak-system,monitoring"
 ```
 
-**Advantages of Wildcard Certificate:**
-- Single certificate for all services
-- One renewal process
-- Simpler management
-- No per-service certificate configuration
+### 5. Reflector Operator
 
-### 5. Secret Reflection
+[Reflector](https://github.com/emberstack/kubernetes-reflector) automatically copies the wildcard certificate secret to namespaces specified in the `reflection-auto-namespaces` annotation.
 
-The wildcard certificate secret is automatically copied to other namespaces using [Reflector](https://github.com/emberstack/kubernetes-reflector):
+**Installed in:** `cert-manager` namespace
+
+**Target namespaces:**
+- `staging` - Staging applications
+- `prod` - Production applications
+- `argocd` - ArgoCD UI
+- `keycloak-system` - Keycloak
+- `monitoring` - Grafana
+
+## Ingress Configuration
+
+### Pre-Provisioned Certificate Pattern
+
+All ingresses reference the pre-provisioned wildcard certificate. **No cert-manager annotations needed.**
 
 ```yaml
-secretTemplate:
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backend
+  namespace: staging
   annotations:
-    reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-    reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-    reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "staging,prod,argocd,keycloak-system"
-```
-
-This ensures the same TLS secret is available wherever Ingress resources need it.
-
-## Service TLS Configuration
-
-### TLS Termination Strategy
-
-**All services use TLS termination at the Ingress level:**
-
-```mermaid
-flowchart LR
-    INTERNET["🌐 Internet"]
-    INGRESS["🚪 Ingress-NGINX<br/>TLS Termination"]
-    SERVICES["🖥️ Backend Services"]
-    
-    INTERNET -->|"HTTPS (encrypted)"| INGRESS
-    INGRESS -->|"HTTP (plain)"| SERVICES
-    
-    classDef external fill:#e3f2fd,stroke:#1976d2,color:#000
-    classDef ingress fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef internal fill:#fff3e0,stroke:#e65100,color:#000
-    
-    class INTERNET external
-    class INGRESS ingress
-    class SERVICES internal
-```
-
-This means:
-- Ingress-NGINX handles TLS encryption/decryption
-- Backend services receive plain HTTP traffic
-- Simplifies service configuration
-- Centralizes certificate management
-
-### Per-Service Configuration
-
-#### ArgoCD
-
-ArgoCD is accessed through the shared ingress-nginx LoadBalancer with TLS termination. No separate ingress chart is needed.
-
-#### Keycloak
-
-**Ingress:** `helm/keycloak-instance/templates/ingress.yaml`
-
-```yaml
-annotations:
-  cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  nginx.ingress.kubernetes.io/backend-protocol: "HTTP"  # TLS terminates at ingress
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:
-  tls:
-  - hosts:
-    - auth.duli.one
-    secretName: duli-one-wildcard-tls
-```
-
-**Keycloak Pod:** TLS is disabled since ingress handles it:
-```yaml
-httpEnabled: true  # Allow HTTP traffic (TLS handled by ingress)
-```
-
-#### Backend API
-
-**Ingress:** `helm/backend/templates/ingress.yml`
-
-```yaml
-annotations:
-  cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
+  ingressClassName: nginx
   tls:
   - hosts:
     - api.duli.one
-    secretName: duli-one-wildcard-tls
+    secretName: duli-one-wildcard-tls  # Pre-provisioned by Reflector
+  rules:
+  - host: api.duli.one
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend
+            port:
+              number: 8000
 ```
 
-#### Scheduler (n8n)
+### Service Domains
 
-**Ingress:** `helm/scheduler/templates/ingress.yml`
+| Service | Domain | Namespace |
+|---------|--------|-----------|
+| ArgoCD | argocd.duli.one | argocd |
+| Keycloak | auth.duli.one | keycloak-system |
+| Backend API | api.duli.one | staging/prod |
+| Scheduler | scheduler.duli.one | staging/prod |
+| RabbitMQ UI | mq.duli.one | staging/prod |
+| Grafana | grafana.duli.one | monitoring |
 
-```yaml
-annotations:
-  cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  tls:
-  - hosts:
-    - scheduler.duli.one
-    secretName: duli-one-wildcard-tls
+## Certificate Lifecycle
+
+### Issuance Flow
+
+```mermaid
+flowchart TD
+    CREATE["1. Certificate CR created"] --> DETECT["2. Cert-manager detects"]
+    DETECT --> REQUEST["3. Creates CertificateRequest"]
+    REQUEST --> ISSUER["4. ClusterIssuer processes"]
+    ISSUER --> TXT["5a. Creates TXT record via Cloudflare"]
+    TXT --> VERIFY["5b. Let's Encrypt verifies"]
+    VERIFY --> CLEANUP["5c. Cleans up TXT record"]
+    CLEANUP --> STORE["6. Certificate stored in Secret"]
+    STORE --> REFLECT["7. Reflector copies to namespaces"]
 ```
 
-#### RabbitMQ Management UI
+### Automatic Renewal
 
-**Ingress:** `helm/rabbitmq/templates/ingress.yaml`
-
-```yaml
-annotations:
-  cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  tls:
-  - hosts:
-    - mq.duli.one
-    secretName: rabbitmq-management-tls
-```
+- **Duration:** 90 days
+- **Renew Before:** 30 days before expiry
+- No manual intervention required
 
 ## Operator Webhook Certificates
 
-### The Problem
-
-Kubernetes operators (CNPG, Keycloak, RabbitMQ, Redis) use admission webhooks that require TLS certificates. These operators typically self-manage their webhook certificates, which can conflict with ArgoCD.
-
-### CloudNative-PG (CNPG) Issue
-
-**Symptom:**
-```
-failed calling webhook "mcluster.cnpg.io": tls: failed to verify certificate: 
-x509: certificate signed by unknown authority
-```
-
-**Root Cause:**
-1. CNPG operator dynamically injects `caBundle` into webhook configurations
-2. ArgoCD detects this as "drift" and removes the caBundle
-3. Creates a fight between ArgoCD and the operator
-
-**Solution:** Tell ArgoCD to ignore caBundle changes:
+Kubernetes operators self-manage their webhook certificates. Configure ArgoCD to ignore these:
 
 ```yaml
 # gitops/applications/cloudnative-pg-operator.yml.j2
@@ -299,155 +273,57 @@ spec:
         - .webhooks[].clientConfig.caBundle
 ```
 
-### Other Operators
+## Monitoring & Troubleshooting
 
-The same pattern applies to other operators if they exhibit similar issues:
-
-| Operator | Webhook Configuration |
-|----------|----------------------|
-| CNPG | `cnpg-mutating-webhook-configuration`, `cnpg-validating-webhook-configuration` |
-| Keycloak | Uses self-managed certificates |
-| RabbitMQ | Uses self-managed certificates |
-| Redis | Uses self-managed certificates |
-
-## Certificate Lifecycle
-
-### Issuance Flow
-
-```mermaid
-flowchart TD
-    subgraph Step1["1. Certificate Created"]
-        CREATE["Certificate resource created"]
-    end
-    
-    subgraph Step2["2. Detection"]
-        DETECT["Cert-manager detects new Certificate"]
-    end
-    
-    subgraph Step3["3. Request"]
-        REQUEST["Creates CertificateRequest"]
-    end
-    
-    subgraph Step4["4. Issuer Processing"]
-        ISSUER["ClusterIssuer processes request"]
-    end
-    
-    subgraph Step5["5. DNS-01 Challenge"]
-        TXT["a. Cert-manager creates TXT record<br/>via Cloudflare API"]
-        VERIFY["b. Let's Encrypt verifies TXT record"]
-        CLEANUP["c. Cert-manager cleans up TXT record"]
-        
-        TXT --> VERIFY
-        VERIFY --> CLEANUP
-    end
-    
-    subgraph Step6["6. Certificate Issued"]
-        STORE["Certificate issued and<br/>stored in Secret"]
-    end
-    
-    subgraph Step7["7. Distribution"]
-        REFLECT["Reflector copies Secret<br/>to target namespaces"]
-    end
-    
-    CREATE --> DETECT
-    DETECT --> REQUEST
-    REQUEST --> ISSUER
-    ISSUER --> Step5
-    CLEANUP --> STORE
-    STORE --> REFLECT
-    
-    classDef step fill:#e3f2fd,stroke:#1976d2,color:#000
-    classDef challenge fill:#fff3e0,stroke:#e65100,color:#000
-    
-    class CREATE,DETECT,REQUEST,ISSUER,STORE,REFLECT step
-    class TXT,VERIFY,CLEANUP challenge
-```
-
-### Renewal
-
-Certificates are automatically renewed:
-- **Duration:** 90 days (Let's Encrypt default)
-- **Renew Before:** 30 days before expiry
-
-No manual intervention required.
-
-### Monitoring
-
-Check certificate status:
+### Check Certificate Status
 
 ```bash
-# List all certificates
-kubectl get certificates -A
+# Certificate status
+kubectl get certificate -n cert-manager duli-one-wildcard
 
-# Check specific certificate
-kubectl describe certificate duli-one-wildcard -n cert-manager
+# Certificate details
+kubectl get secret duli-one-wildcard-tls -n cert-manager \
+  -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -noout -dates -issuer
 
-# Check certificate secret
-kubectl get secret duli-one-wildcard-tls -n cert-manager -o yaml
-
-# View certificate details
-kubectl get secret duli-one-wildcard-tls -n cert-manager -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout
+# Verify reflection
+kubectl get secret duli-one-wildcard-tls -n argocd \
+  -o jsonpath='{.metadata.annotations}'
 ```
 
-## Troubleshooting
+### Verify Origin Certificate
 
-### Certificate Not Issuing
+```bash
+# Direct to origin IP (bypasses Cloudflare)
+echo | openssl s_client -connect <LOAD_BALANCER_IP>:443 -servername argocd.duli.one 2>/dev/null | \
+  openssl x509 -noout -dates -issuer
 
-1. **Check Certificate status:**
-   ```bash
-   kubectl describe certificate duli-one-wildcard -n cert-manager
-   ```
-
-2. **Check CertificateRequest:**
-   ```bash
-   kubectl get certificaterequest -n cert-manager
-   kubectl describe certificaterequest <name> -n cert-manager
-   ```
-
-3. **Check Challenge status:**
-   ```bash
-   kubectl get challenges -A
-   kubectl describe challenge <name> -n cert-manager
-   ```
-
-4. **Check cert-manager logs:**
-   ```bash
-   kubectl logs -n cert-manager -l app.kubernetes.io/name=cert-manager
-   ```
+# Through Cloudflare (shows edge certificate)
+echo | openssl s_client -connect argocd.duli.one:443 -servername argocd.duli.one 2>/dev/null | \
+  openssl x509 -noout -dates -issuer
+```
 
 ### Common Issues
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| Challenge stuck in pending | Cloudflare API token invalid | Verify token permissions |
-| DNS propagation timeout | DNS not propagating | Wait or check Cloudflare dashboard |
-| Rate limit exceeded | Too many certificate requests | Wait or use staging issuer |
-| Secret not found in namespace | Reflector not working | Check Reflector logs and annotations |
-
-### Cloudflare API Token Requirements
-
-The Cloudflare API token needs these permissions:
-- **Zone:DNS:Edit** - To create/delete TXT records for DNS-01 challenge
-- **Zone:Zone:Read** - To list zones
-
-Create token at: https://dash.cloudflare.com/profile/api-tokens
+| Challenge pending | Invalid Cloudflare token | Verify token permissions |
+| Secret not in namespace | Reflector not working | Check Reflector logs |
+| Browser shows Google cert | Normal - Cloudflare edge | Origin cert is Let's Encrypt |
+| Rate limit exceeded | Too many requests | Wait 1 hour |
 
 ## File Reference
 
 | File | Purpose |
 |------|---------|
-| `helm/cert-manager-issuers/templates/cluster-issuers.yaml` | ClusterIssuer definitions |
-| `helm/cert-manager-issuers/templates/wildcard-certificate.yaml` | Wildcard certificate |
-| `helm/cert-manager-issuers/templates/cloudflare-secret.yaml` | Cloudflare API token secret |
-| `helm/cert-manager-issuers/values.yaml` | Configuration values |
+| `helm/cert-manager-issuers/templates/cluster-issuers.yaml` | ClusterIssuer definition |
+| `helm/cert-manager-issuers/templates/wildcard-certificate.yaml` | Wildcard certificate with Reflector annotations |
+| `helm/cert-manager-issuers/templates/cloudflare-secret.yaml` | Cloudflare API token |
 | `gitops/applications/cert-manager-issuers.yml.j2` | ArgoCD application |
-| `ansible/playbooks/install_infrastructures.yml` | Cert-manager installation |
 
 ## Best Practices
 
-1. **Use wildcard certificates** - Simpler management, single renewal
-2. **Use DNS-01 challenge** - Works with Cloudflare proxy, supports wildcards
-3. **Use Reflector** - Automatically sync secrets across namespaces
-4. **TLS termination at Ingress** - Simplifies backend configuration
-5. **Use `ignoreDifferences`** - Prevent ArgoCD conflicts with operator-managed webhooks
-6. **Monitor certificate expiry** - Set up alerts for certificate expiration
+1. **Single wildcard certificate** - One cert for all *.duli.one services
+2. **Pre-provisioned pattern** - No per-ingress cert-manager annotations
+3. **Reflector for distribution** - Automatic secret sync across namespaces
+4. **DNS-01 challenge** - Works with Cloudflare proxy, supports wildcards
+5. **Full (Strict) SSL** - Cloudflare validates origin certificate

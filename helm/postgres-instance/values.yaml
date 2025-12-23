@@ -13,3 +13,10 @@ cluster:
     initdb:
       database: duli_db
       owner: duli-admin
+      postInitApplicationSQL: []
+  
+  postgresql:
+    parameters: {}
+
+  service:
+    type: ClusterIP

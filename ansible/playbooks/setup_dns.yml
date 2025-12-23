@@ -159,6 +159,10 @@
         api_token: "{{ vault_cloudflare_api_token }}"
         state: absent
       loop: "{{ env_config.subdomains }}"
+      retries: 3
+      delay: 5
+      register: result
+      until: result is not failed
       ignore_errors: true
 
     - name: Configure HTTP service A records
@@ -181,6 +185,11 @@
         api_token: "{{ vault_cloudflare_api_token }}"
         state: absent
       loop: "{{ env_config.tcp_services }}"
+      retries: 3
+      delay: 5
+      register: result
+      until: result is not failed
+      ignore_errors: true
     
     - name: Configure TCP service A records (unproxied - for external access)
       community.general.cloudflare_dns:

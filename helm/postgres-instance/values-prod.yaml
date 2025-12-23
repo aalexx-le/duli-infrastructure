@@ -28,9 +28,6 @@ cluster:
       cpu: 400m
       memory: 384Mi
   
-  service:
-    type: ClusterIP
-  
   monitoring:
     enabled: true
   

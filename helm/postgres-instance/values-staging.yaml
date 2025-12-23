@@ -27,6 +27,3 @@ cluster:
     limits:
       cpu: 400m
       memory: 384Mi
-  
-  service:
-    type: ClusterIP
