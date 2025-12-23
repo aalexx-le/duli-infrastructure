@@ -131,11 +131,12 @@ grafana:
           cpu: 5m  # Reduced from 10m
           memory: 24Mi  # Reduced from 32Mi
 
-# Prometheus - MINIMAL
+# Prometheus - DISABLED (cluster too small)
+# Use Grafana with Loki for log-based monitoring instead
 prometheus:
-  enabled: true
+  enabled: false
   prometheusSpec:
-    replicas: 1
+    replicas: 0
     retention: 2d  # 2 days only (reduced from 3)
     retentionSize: "1GB"  # Reduced from 2GB
     
