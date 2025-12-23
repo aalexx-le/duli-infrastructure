@@ -45,7 +45,7 @@ alertmanager:
   enabled: true
   alertmanagerSpec:
     replicas: 1
-    retention: 72h  # 3 days only
+    retention: 48h  # 2 days only (reduced from 72h)
     storage:
       volumeClaimTemplate:
         spec:
@@ -53,14 +53,14 @@ alertmanager:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 1Gi
+              storage: 500Mi  # Reduced from 1Gi
     resources:
       limits:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 30m  # Reduced from 50m
+        memory: 48Mi  # Reduced from 64Mi
       requests:
-        cpu: 10m
-        memory: 32Mi
+        cpu: 5m  # Reduced from 10m
+        memory: 24Mi  # Reduced from 32Mi
 
 # Grafana - MINIMAL
 grafana:
@@ -104,11 +104,11 @@ grafana:
   
   resources:
     limits:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 75m  # Reduced from 100m
+      memory: 96Mi  # Reduced from 128Mi
     requests:
-      cpu: 20m
-      memory: 64Mi
+      cpu: 15m  # Reduced from 20m
+      memory: 48Mi  # Reduced from 64Mi
 
   sidecar:
     dashboards:
@@ -116,28 +116,28 @@ grafana:
       searchNamespace: ALL
       resources:
         limits:
-          cpu: 50m
-          memory: 64Mi
+          cpu: 30m  # Reduced from 50m
+          memory: 48Mi  # Reduced from 64Mi
         requests:
-          cpu: 10m
-          memory: 32Mi
+          cpu: 5m  # Reduced from 10m
+          memory: 24Mi  # Reduced from 32Mi
     datasources:
       enabled: true
       resources:
         limits:
-          cpu: 50m
-          memory: 64Mi
+          cpu: 30m  # Reduced from 50m
+          memory: 48Mi  # Reduced from 64Mi
         requests:
-          cpu: 10m
-          memory: 32Mi
+          cpu: 5m  # Reduced from 10m
+          memory: 24Mi  # Reduced from 32Mi
 
 # Prometheus - MINIMAL
 prometheus:
   enabled: true
   prometheusSpec:
     replicas: 1
-    retention: 3d  # 3 days only
-    retentionSize: "2GB"
+    retention: 2d  # 2 days only (reduced from 3)
+    retentionSize: "1GB"  # Reduced from 2GB
     
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
@@ -146,9 +146,9 @@ prometheus:
     podMonitorNamespaceSelector: {}
     ruleNamespaceSelector: {}
     
-    # Scrape less frequently
-    scrapeInterval: 60s
-    evaluationInterval: 60s
+    # Scrape less frequently to reduce resource usage
+    scrapeInterval: 120s  # Increased from 60s
+    evaluationInterval: 120s  # Increased from 60s
     
     storageSpec:
       volumeClaimTemplate:
@@ -157,15 +157,15 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 5Gi
+              storage: 3Gi  # Reduced from 5Gi
     
     resources:
       limits:
-        cpu: 200m
-        memory: 512Mi
+        cpu: 150m  # Reduced from 200m
+        memory: 384Mi  # Reduced from 512Mi
       requests:
-        cpu: 50m
-        memory: 256Mi
+        cpu: 30m  # Reduced from 50m
+        memory: 192Mi  # Reduced from 256Mi
 
 # Prometheus Operator - MINIMAL
 prometheusOperator:
@@ -178,37 +178,34 @@ prometheusOperator:
       cpu: 20m
       memory: 64Mi
   
+  # Disable admission webhooks for resource-constrained environments
+  # This prevents TLS certificate issues and reduces resource usage
   admissionWebhooks:
-    enabled: true
-    patch:
-      enabled: true
-      resources:
-        limits:
-          cpu: 50m
-          memory: 64Mi
-        requests:
-          cpu: 10m
-          memory: 32Mi
+    enabled: false
+  
+  # Disable TLS for the operator's web server
+  tls:
+    enabled: false
 
 # Node exporter - MINIMAL
 prometheus-node-exporter:
   resources:
     limits:
-      cpu: 50m
-      memory: 32Mi
+      cpu: 30m  # Reduced from 50m
+      memory: 24Mi  # Reduced from 32Mi
     requests:
-      cpu: 10m
-      memory: 16Mi
+      cpu: 5m  # Reduced from 10m
+      memory: 12Mi  # Reduced from 16Mi
 
 # Kube state metrics - MINIMAL
 kube-state-metrics:
   resources:
     limits:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 30m  # Reduced from 50m
+      memory: 48Mi  # Reduced from 64Mi
     requests:
-      cpu: 10m
-      memory: 32Mi
+      cpu: 5m  # Reduced from 10m
+      memory: 24Mi  # Reduced from 32Mi
 
 # Disable control plane monitoring (not accessible on managed k8s)
 kubeControllerManager:
