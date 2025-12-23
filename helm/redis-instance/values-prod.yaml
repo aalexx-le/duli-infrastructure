@@ -16,7 +16,7 @@ redis:
         memory: 96Mi
   
   storage:
-    size: 10Gi
+    size: 2Gi
     storageClassName: do-block-storage
   
   service:

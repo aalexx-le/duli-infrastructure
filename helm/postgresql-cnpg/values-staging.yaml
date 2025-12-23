@@ -17,7 +17,7 @@ cluster:
       effective_io_concurrency: "200"
   
   storage:
-    size: 50Gi
+    size: 10Gi
     storageClass: do-block-storage
   
   resources:

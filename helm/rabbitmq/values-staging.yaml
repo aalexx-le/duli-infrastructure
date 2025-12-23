@@ -11,7 +11,7 @@ cluster:
   
   storage:
     storageClass: do-block-storage
-    size: 5Gi
+    size: 2Gi
   
   # NOTE: RabbitMQ requires memory.requests == memory.limits
   resources:

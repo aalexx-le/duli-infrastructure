@@ -37,12 +37,12 @@ loki:
     max_outstanding_requests_per_tenant: 100
   
   limits_config:
-    retention_period: 48h  # 2 days only (reduced from 72h)
-    ingestion_rate_mb: 1  # Reduced from 2
-    ingestion_burst_size_mb: 2  # Reduced from 4
-    max_query_series: 50  # Reduced from 100
+    retention_period: 24h  # 1 day only (adjusted to match 1Gi storage)
+    ingestion_rate_mb: 0.5  # Very low ingestion rate
+    ingestion_burst_size_mb: 1  # Reduced from 4
+    max_query_series: 30  # Reduced from 100
     max_query_parallelism: 1  # Reduced from 2
-    max_entries_limit_per_query: 500  # Reduced from 1000
+    max_entries_limit_per_query: 250  # Reduced from 1000
   
   storage:
     type: filesystem
@@ -53,7 +53,7 @@ singleBinary:
   persistence:
     enabled: true
     storageClass: do-block-storage
-    size: 3Gi  # Reduced from 5Gi
+    size: 1Gi  # Reduced from 3Gi for minimal footprint
   resources:
     limits:
       cpu: 150m  # Reduced from 200m

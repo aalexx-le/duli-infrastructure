@@ -27,3 +27,13 @@ n8n:
   host: scheduler.duli.local
   protocol: https
   port: 5678
+
+# Prometheus monitoring
+monitoring:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  metricsPath: /metrics
+  additionalLabels: {}
+  metricRelabelings: []
+  relabelings: []

@@ -4,3 +4,12 @@
 cluster:
   enabled: true
   name: queue
+
+# Prometheus monitoring
+monitoring:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  additionalLabels: {}
+  metricRelabelings: []
+  relabelings: []

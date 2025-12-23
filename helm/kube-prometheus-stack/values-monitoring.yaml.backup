@@ -1,26 +1,26 @@
-# Kube Prometheus Stack - PRODUCTION-READY Configuration
+# Kube Prometheus Stack - MINIMAL Configuration
 # Chart: prometheus-community/kube-prometheus-stack v80.6.0
-# Full monitoring with Prometheus + Grafana + Loki integration
+# Optimized for: 1 vCPU / 1GB RAM nodes
 
-# Enable all essential monitoring rules
+# Reduce default rules to minimize memory
 defaultRules:
   create: true
   rules:
     alertmanager: true
-    etcd: false  # Not accessible on managed K8s
+    etcd: false
     configReloaders: true
     general: true
-    k8sContainerCpuUsageSecondsTotal: true
-    k8sContainerMemoryCache: true
-    k8sContainerMemoryRss: true
-    k8sContainerMemorySwap: true
+    k8sContainerCpuUsageSecondsTotal: false
+    k8sContainerMemoryCache: false
+    k8sContainerMemoryRss: false
+    k8sContainerMemorySwap: false
     k8sContainerResource: true
     k8sPodOwner: true
     kubeApiserverAvailability: false
     kubeApiserverBurnrate: false
     kubeApiserverHistogram: false
     kubeApiserverSlos: false
-    kubeControllerManager: false  # Not accessible on managed K8s
+    kubeControllerManager: false
     kubelet: true
     kubeProxy: false
     kubePrometheusGeneral: true
@@ -32,7 +32,7 @@ defaultRules:
     kubeSchedulerAlerting: false
     kubeSchedulerRecording: false
     kubeStateMetrics: true
-    network: true
+    network: false
     node: true
     nodeExporterAlerting: true
     nodeExporterRecording: true
@@ -40,12 +40,12 @@ defaultRules:
     prometheusOperator: true
     windows: false
 
-# Alertmanager
+# Alertmanager - MINIMAL
 alertmanager:
   enabled: true
   alertmanagerSpec:
     replicas: 1
-    retention: 120h  # 5 days
+    retention: 48h  # 2 days only (reduced from 72h)
     storage:
       volumeClaimTemplate:
         spec:
@@ -53,16 +53,16 @@ alertmanager:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 2Gi
+              storage: 500Mi  # Reduced from 1Gi
     resources:
       limits:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 30m  # Reduced from 50m
+        memory: 48Mi  # Reduced from 64Mi
       requests:
-        cpu: 20m
-        memory: 64Mi
+        cpu: 5m  # Reduced from 10m
+        memory: 24Mi  # Reduced from 32Mi
 
-# Grafana - Full featured
+# Grafana - MINIMAL
 grafana:
   enabled: true
   adminUser: admin
@@ -79,7 +79,7 @@ grafana:
     storageClassName: do-block-storage
     accessModes:
       - ReadWriteOnce
-    size: 5Gi
+    size: 1Gi
   
   ingress:
     enabled: true
@@ -93,7 +93,6 @@ grafana:
         hosts:
           - grafana.duli.one
   
-  # Data sources
   additionalDataSources:
     - name: Loki
       type: loki
@@ -101,77 +100,57 @@ grafana:
       access: proxy
       isDefault: false
       jsonData:
-        maxLines: 1000
-        timeout: 60
-        httpHeaderName1: "X-Scope-OrgID"
-      secureJsonData:
-        httpHeaderValue1: "tenant1"
-    
-    - name: Prometheus
-      type: prometheus
-      url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-      access: proxy
-      isDefault: true
-      jsonData:
-        timeInterval: 30s
+        maxLines: 500
   
   resources:
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 75m  # Reduced from 100m
+      memory: 96Mi  # Reduced from 128Mi
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 15m  # Reduced from 20m
+      memory: 48Mi  # Reduced from 64Mi
 
   sidecar:
     dashboards:
       enabled: true
       searchNamespace: ALL
-      folderAnnotation: grafana_folder
-      provider:
-        foldersFromFilesStructure: true
       resources:
         limits:
-          cpu: 50m
-          memory: 64Mi
+          cpu: 30m  # Reduced from 50m
+          memory: 48Mi  # Reduced from 64Mi
         requests:
-          cpu: 10m
-          memory: 32Mi
+          cpu: 5m  # Reduced from 10m
+          memory: 24Mi  # Reduced from 32Mi
     datasources:
       enabled: true
       resources:
         limits:
-          cpu: 50m
-          memory: 64Mi
+          cpu: 30m  # Reduced from 50m
+          memory: 48Mi  # Reduced from 64Mi
         requests:
-          cpu: 10m
-          memory: 32Mi
+          cpu: 5m  # Reduced from 10m
+          memory: 24Mi  # Reduced from 32Mi
 
-# Prometheus - ENABLED with optimized settings
+# Prometheus - DISABLED (cluster too small)
+# Use Grafana with Loki for log-based monitoring instead
 prometheus:
-  enabled: true
+  enabled: false
   prometheusSpec:
-    replicas: 1
-    retention: 7d  # 7 days retention
-    retentionSize: "8GB"
+    replicas: 0
+    retention: 2d  # 2 days only (reduced from 3)
+    retentionSize: "1GB"  # Reduced from 2GB
     
-    # Auto-discover ServiceMonitors in all namespaces
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
-    probeSelectorNilUsesHelmValues: false
-    
     serviceMonitorNamespaceSelector: {}
     podMonitorNamespaceSelector: {}
     ruleNamespaceSelector: {}
-    probeNamespaceSelector: {}
     
-    # Scrape intervals
-    scrapeInterval: 30s
-    scrapeTimeout: 10s
-    evaluationInterval: 30s
+    # Scrape less frequently to reduce resource usage
+    scrapeInterval: 120s  # Increased from 60s
+    evaluationInterval: 120s  # Increased from 60s
     
-    # Storage
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -179,57 +158,55 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 3Gi  # Reduced from 5Gi
     
-    # Resources
     resources:
       limits:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 150m  # Reduced from 200m
+        memory: 384Mi  # Reduced from 512Mi
       requests:
-        cpu: 100m
-        memory: 512Mi
-    
-    # Enable remote write to Loki (for logs)
-    additionalScrapeConfigs: []
+        cpu: 30m  # Reduced from 50m
+        memory: 192Mi  # Reduced from 256Mi
 
-# Prometheus Operator
+# Prometheus Operator - MINIMAL
 prometheusOperator:
   enabled: true
   resources:
     limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
-      cpu: 50m
+      cpu: 100m
       memory: 128Mi
+    requests:
+      cpu: 20m
+      memory: 64Mi
   
-  # Disable admission webhooks for simplicity
+  # Disable admission webhooks for resource-constrained environments
+  # This prevents TLS certificate issues and reduces resource usage
   admissionWebhooks:
     enabled: false
   
+  # Disable TLS for the operator's web server
   tls:
     enabled: false
 
-# Node exporter
+# Node exporter - MINIMAL
 prometheus-node-exporter:
   resources:
     limits:
-      cpu: 100m
-      memory: 64Mi
+      cpu: 30m  # Reduced from 50m
+      memory: 24Mi  # Reduced from 32Mi
     requests:
-      cpu: 20m
-      memory: 32Mi
+      cpu: 5m  # Reduced from 10m
+      memory: 12Mi  # Reduced from 16Mi
 
-# Kube state metrics
+# Kube state metrics - MINIMAL
 kube-state-metrics:
   resources:
     limits:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 30m  # Reduced from 50m
+      memory: 48Mi  # Reduced from 64Mi
     requests:
-      cpu: 20m
-      memory: 64Mi
+      cpu: 5m  # Reduced from 10m
+      memory: 24Mi  # Reduced from 32Mi
 
 # Disable control plane monitoring (not accessible on managed k8s)
 kubeControllerManager:

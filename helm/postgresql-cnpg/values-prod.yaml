@@ -1,7 +1,7 @@
 # PostgreSQL - Production Configuration
 cluster:
   name: database
-  instances: 2  # 2 instances for HA
+  instances: 1  # 1 instance for cost optimization
   
   bootstrap:
     initdb:
@@ -17,7 +17,7 @@ cluster:
       effective_io_concurrency: "200"
   
   storage:
-    size: 50Gi
+    size: 40Gi
     storageClass: do-block-storage
   
   resources:
