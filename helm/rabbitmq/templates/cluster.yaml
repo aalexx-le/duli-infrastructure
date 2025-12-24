@@ -15,7 +15,7 @@ spec:
     type: {{ .Values.cluster.service.type }}
   persistence:
     storageClassName: {{ .Values.cluster.storage.storageClass }}
-    size: {{ .Values.cluster.storage.size }}
+    storage: {{ .Values.cluster.storage.size }}
   resources:
     requests:
       cpu: {{ .Values.cluster.resources.requests.cpu }}
