@@ -16,11 +16,11 @@ keycloak:
   # Resource limits - Keycloak needs sufficient memory for JVM
   resources:
     requests:
-      cpu: 150m
+      cpu: 200m
       memory: 256Mi
     limits:
-      cpu: 250m
-      memory: 300Mi
+      cpu: 300m
+      memory: 512Mi
 
 # Service configuration - ClusterIP since accessed via Ingress
 service:
