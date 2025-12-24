@@ -25,7 +25,7 @@ cluster:
       cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 400m
+      cpu: 300m
       memory: 384Mi
 
   monitoring:
