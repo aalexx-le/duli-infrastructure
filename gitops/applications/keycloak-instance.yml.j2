@@ -23,8 +23,18 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
   # Ignore operator-managed fields that cause sync drift
   ignoreDifferences:
+    - group: k8s.keycloak.org
+      kind: Keycloak
+      jsonPointers:
+        - /status
+        - /metadata/annotations
+        - /metadata/finalizers
+      jqPathExpressions:
+        - .spec.unsupported
+        - .spec.instances
     - group: k8s.keycloak.org
       kind: Keycloak
       managedFieldsManagers:
