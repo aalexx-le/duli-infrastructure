@@ -27,9 +27,10 @@ spec:
   ignoreDifferences:
     - group: k8s.keycloak.org
       kind: Keycloak
-      managedFieldsManagers:
-        - keycloak-operator
+      jsonPointers:
+        - /status
+        - /spec/instances
     - group: k8s.keycloak.org
       kind: KeycloakRealmImport
-      managedFieldsManagers:
-        - keycloak-operator
+      jsonPointers:
+        - /status
