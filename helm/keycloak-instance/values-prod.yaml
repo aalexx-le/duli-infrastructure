@@ -17,10 +17,10 @@ keycloak:
   # Default is 1700Mi/2Gi which is too high for small clusters
   resources:
     requests:
-      cpu: 200m
+      cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 300m
+      cpu: 200m
       memory: 512Mi
 
 # Service configuration - ClusterIP since accessed via Ingress
