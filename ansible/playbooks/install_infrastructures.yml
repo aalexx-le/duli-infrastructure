@@ -167,8 +167,6 @@
         - keycloak-operator
         - redis-operator
         - argocd-ingress
-        - kube-prometheus-stack
-        - loki
       loop_control:
         label: "{{ item }}"
       retries: 3
@@ -197,8 +195,6 @@
         - keycloak-operator
         - redis-operator
         - argocd-ingress
-        - kube-prometheus-stack
-        - loki
       loop_control:
         label: "{{ item }}"
       retries: 2

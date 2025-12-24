@@ -219,7 +219,7 @@ spec:
 
 ---
 
-### 5. Helm Chart: infrastructure-secrets
+### 5. Helm Chart: sealed-secrets
 
 **Location:** `helm/secrets/`
 
@@ -235,26 +235,26 @@ helm/secrets/
     └── redis-sealed-secret-staging.yaml
 ```
 
-**ArgoCD Application:** `gitops/applications/infrastructure-secrets.yml.j2`
+**ArgoCD Application:** `gitops/applications/sealed-secrets.yml.j2`
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: infrastructure-secrets-{{ target_env }}
+  name: sealed-secrets
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/aalexx-le/duli-infrastructure
-    targetRevision: main
+    repoURL: "{{ git_repo_url }}"
+    targetRevision: {{ git_branch | default('main') }}
     path: helm/secrets
     helm:
       valueFiles:
         - values.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: "{{ target_env }}"
+    namespace: keycloak-system
   syncPolicy:
     automated:
       prune: true

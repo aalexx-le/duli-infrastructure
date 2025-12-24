@@ -56,8 +56,8 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/aalexx-le/duli-infrastructure
-    targetRevision: main
+    repoURL: "{{ git_repo_url }}"
+    targetRevision: {{ git_branch | default('main') }}
     path: helm/backend
     helm:
       releaseName: backend

@@ -20,6 +20,10 @@ ${cp.name}
 %{ endfor ~}
 
 [kube_node]
+%{ for cp in control_plane_nodes ~}
+${cp.name}
+%{ endfor ~}
+# Worker nodes
 %{ for worker in worker_nodes ~}
 ${worker.name}
 %{ endfor ~}

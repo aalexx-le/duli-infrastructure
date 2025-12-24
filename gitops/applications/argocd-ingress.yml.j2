@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: "{{ git_repo_url }}"
-    targetRevision: HEAD
+    targetRevision: {{ git_branch | default('main') }}
     path: helm/argocd-ingress
   destination:
     server: https://kubernetes.default.svc

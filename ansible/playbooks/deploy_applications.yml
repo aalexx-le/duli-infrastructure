@@ -48,24 +48,21 @@
     # ARGOCD APPLICATIONS
     # ============================================================================
 
-    # Shared resources (deployed for both environments)
-    # These resources are environment-independent but shared across services:
-    # - infrastructure-secrets: Secrets in keycloak-system namespace (staging only)
-    - name: Deploy Shared ArgoCD Applications (staging only)
+    # Shared resources
+    - name: Deploy Shared ArgoCD Applications
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', playbook_dir + '/../../gitops/applications/' + item + '.yml.j2') | from_yaml }}"
-      vars:
-        target_env: staging
       loop:
-        - infrastructure-secrets
+        - sealed-secrets
+        - kube-prometheus-stack
+        - loki
       loop_control:
-        label: "{{ item }}-staging (shared)"
+        label: "{{ item }}"
       retries: 3
       delay: 5
       until: shared_apps_result is succeeded
       register: shared_apps_result
-      when: current_environment == 'staging'
 
     # Environment-specific applications
     - name: Deploy Environment-Specific ArgoCD Applications
@@ -90,12 +87,12 @@
       until: argocd_apps_result is succeeded
       register: argocd_apps_result
 
-    # Wait for shared applications (staging only)
+    # Wait for shared applications (once)
     - name: Wait for Shared ArgoCD Applications to sync
       kubernetes.core.k8s_info:
         kind: Application
         namespace: argocd
-        name: "{{ item }}-staging"
+        name: "{{ item }}"
         wait: true
         wait_condition:
           type: Synced
@@ -103,13 +100,14 @@
         wait_sleep: 10
         wait_timeout: 300
       loop:
-        - infrastructure-secrets
+        - sealed-secrets
+        - kube-prometheus-stack
+        - loki
       loop_control:
-        label: "{{ item }}-staging (shared)"
+        label: "{{ item }} (shared)"
       retries: 2
       delay: 15
       ignore_errors: true
-      when: current_environment == 'staging'
 
     # Wait for environment-specific applications
     - name: Wait for Environment-Specific ArgoCD Applications to sync

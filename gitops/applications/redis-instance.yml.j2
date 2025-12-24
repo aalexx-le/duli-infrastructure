@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -6,8 +7,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/aalexx-le/duli-infrastructure
-    targetRevision: main
+    repoURL: "{{ git_repo_url }}"
+    targetRevision: {{ git_branch | default('main') }}
     path: helm/redis-instance
     helm:
       valueFiles:
