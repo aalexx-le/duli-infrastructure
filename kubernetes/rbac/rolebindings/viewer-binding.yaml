@@ -1,0 +1,34 @@
+---
+# Bind viewer role to staging namespace
+# Replace USERNAME with actual team member username
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: viewer-binding
+  namespace: staging
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: viewer
+subjects:
+  # Add team member usernames here
+  - kind: User
+    name: "team-member@example.com"
+    apiGroup: rbac.authorization.k8s.io
+---
+# Bind viewer role to prod namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: viewer-binding
+  namespace: prod
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: viewer
+subjects:
+  # Add team member usernames here
+  - kind: User
+    name: "team-member@example.com"
+    apiGroup: rbac.authorization.k8s.io
+

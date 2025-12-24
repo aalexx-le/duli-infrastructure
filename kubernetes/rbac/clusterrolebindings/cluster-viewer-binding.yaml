@@ -1,0 +1,19 @@
+---
+# Bind cluster-viewer role cluster-wide for monitoring teams
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-viewer-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-viewer
+subjects:
+  # Add monitoring team member usernames here
+  - kind: User
+    name: "monitoring-team@example.com"
+    apiGroup: rbac.authorization.k8s.io
+  - kind: User
+    name: "devops-team@example.com"
+    apiGroup: rbac.authorization.k8s.io
+

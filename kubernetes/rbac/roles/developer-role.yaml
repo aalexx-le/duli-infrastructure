@@ -1,0 +1,63 @@
+---
+# Developer read/write access for staging environment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer
+  namespace: staging
+rules:
+  # Full access to pods
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/status", "pods/exec"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale", "deployments/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to replica sets
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "replicasets/scale"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to stateful sets
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "statefulsets/scale"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to services
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to config and secrets
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to jobs
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Full access to ingresses
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # View events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  
+  # View persistent volumes (read-only)
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list"]
+  
+  # Port forward for debugging
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create", "list", "watch"]
+

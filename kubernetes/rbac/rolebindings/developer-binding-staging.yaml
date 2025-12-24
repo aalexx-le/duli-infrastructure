@@ -1,0 +1,22 @@
+---
+# Bind developer role to staging namespace only
+# This allows developers to deploy and modify apps in staging
+# but prevents access to production
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developer-binding
+  namespace: staging
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: developer
+subjects:
+  # Add team member usernames here
+  - kind: User
+    name: "developer1@example.com"
+    apiGroup: rbac.authorization.k8s.io
+  - kind: User
+    name: "developer2@example.com"
+    apiGroup: rbac.authorization.k8s.io
+
