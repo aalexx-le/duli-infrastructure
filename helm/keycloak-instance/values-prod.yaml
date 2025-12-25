@@ -10,9 +10,9 @@ keycloak:
   tls:
     enabled: false  # TLS terminates at ingress level
   # Proxy configuration - replaces deprecated 'proxy' option
+  # Use xforwarded for NGINX Ingress (sends X-Forwarded-* headers)
   proxy:
-    mode: "forwarded"
-    headers: "forwarded"
+    headers: "xforwarded"
   # Resource limits for small cluster (supported field)
   # Default is 1700Mi/2Gi which is too high for small clusters
   resources:
