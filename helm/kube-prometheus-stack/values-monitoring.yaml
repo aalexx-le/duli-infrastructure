@@ -14,11 +14,11 @@ alertmanager:
               storage: 2Gi
     resources:
       limits:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 50m
+        memory: 96Mi
       requests:
-        cpu: 20m
-        memory: 64Mi
+        cpu: 10m
+        memory: 48Mi
 
 # Grafana - Full featured
 grafana:
@@ -73,11 +73,11 @@ grafana:
   
   resources:
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 200Mi
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 25m
+      memory: 100Mi
 
   sidecar:
     dashboards:
@@ -88,21 +88,21 @@ grafana:
         foldersFromFilesStructure: true
       resources:
         limits:
-          cpu: 50m
-          memory: 64Mi
+          cpu: 30m
+          memory: 48Mi
         requests:
-          cpu: 10m
-          memory: 32Mi
+          cpu: 5m
+          memory: 24Mi
     datasources:
       enabled: true
       defaultDatasourceEnabled: false  # Disable built-in Prometheus datasource (we define custom ones)
       resources:
         limits:
-          cpu: 50m
-          memory: 64Mi
+          cpu: 30m
+          memory: 48Mi
         requests:
-          cpu: 10m
-          memory: 32Mi
+          cpu: 5m
+          memory: 24Mi
 
 # Prometheus - ENABLED with optimized settings
 prometheus:
@@ -138,13 +138,14 @@ prometheus:
             requests:
               storage: 2Gi
     
-    # Resources
+    # Resources - Optimized for small 3-node cluster
     resources:
-      limits:
-        cpu: 500m
-        memory: 1Gi
       requests:
         cpu: 100m
+        memory: 512Mi
+
+      limits:
+        cpu: 200m
         memory: 512Mi
     
     # Enable remote write to Loki (for logs)
@@ -155,11 +156,11 @@ prometheusOperator:
   enabled: true
   resources:
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 200Mi
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 25m
+      memory: 100Mi
   
   # Disable admission webhooks for simplicity
   admissionWebhooks:
@@ -168,25 +169,25 @@ prometheusOperator:
   tls:
     enabled: false
 
-# Node exporter
+# Node exporter - runs on every node
 prometheus-node-exporter:
   resources:
     limits:
-      cpu: 100m
-      memory: 64Mi
+      cpu: 50m
+      memory: 48Mi
     requests:
-      cpu: 20m
-      memory: 32Mi
+      cpu: 30m
+      memory: 24Mi
 
 # Kube state metrics
 kube-state-metrics:
   resources:
     limits:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 96Mi
     requests:
-      cpu: 20m
-      memory: 64Mi
+      cpu: 10m
+      memory: 48Mi
 
 
 # Disable thanos
