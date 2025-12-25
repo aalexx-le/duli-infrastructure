@@ -49,7 +49,11 @@ spec:
       - clientId: mobile
         name: "Mobile Application (React Native)"
         description: "Public client for mobile OAuth flows with deep link callbacks"
+        enabled: true
         publicClient: true
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        implicitFlowEnabled: false
         redirectUris:
           - "exp://localhost:19000/--/auth/callback"
           - "duliapp://auth/callback"
