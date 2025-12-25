@@ -56,6 +56,7 @@ spec:
         implicitFlowEnabled: false
         redirectUris:
           - "exp://localhost:19000/--/auth/callback"
+          - "exp://*:*/*"
           - "duliapp://auth/callback"
         webOrigins:
           - "*"
