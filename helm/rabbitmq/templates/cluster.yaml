@@ -10,7 +10,6 @@ metadata:
 spec:
   replicas: {{ .Values.cluster.replicas }}
   image: {{ .Values.cluster.image }}
-  imagePullPolicy: {{ .Values.cluster.imagePullPolicy }}
   service:
     type: {{ .Values.cluster.service.type }}
   persistence:
