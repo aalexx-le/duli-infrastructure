@@ -30,10 +30,8 @@ service:
   targetPort: 8080
 
 # Ingress Configuration
-# Disabled in prod because staging manages the shared Ingress resource
-# This prevents resource ownership conflicts (both apps shouldn't create the same Ingress)
 ingress:
-  enabled: false
+  enabled: true
   className: nginx
   host: "auth.duli.one"
   path: /
