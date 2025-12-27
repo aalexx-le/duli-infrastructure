@@ -1,0 +1,501 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-cost-monitoring-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  cost-monitoring.json: |
+    {
+      "dashboard": {
+        "title": "Cost Monitoring - Kubernetes & DigitalOcean",
+        "tags": ["cost", "infrastructure", "digitalocean"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Daily Cost Breakdown",
+            "type": "piechart",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 0
+            },
+            "targets": [
+              {
+                "expr": "topk(3, sum by (resource_type) (do_cost_exporter_daily_cost))",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "reduceOptions": {
+                "values": false,
+                "fields": "",
+                "calcs": ["lastNotNull"]
+              },
+              "pieType": "pie",
+              "tooltip": {
+                "mode": "single"
+              },
+              "legend": {
+                "displayMode": "list",
+                "placement": "right"
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Total Daily Cost",
+            "type": "stat",
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 0
+            },
+            "targets": [
+              {
+                "expr": "do_cost_exporter_daily_cost",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "area",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "values": false,
+                "fields": "",
+                "calcs": ["lastNotNull"]
+              },
+              "textMode": "auto"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 100
+                    },
+                    {
+                      "color": "red",
+                      "value": 150
+                    }
+                  ]
+                },
+                "unit": "currencyUSD"
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 3,
+            "title": "K8s Cost (Estimated)",
+            "type": "stat",
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 0
+            },
+            "targets": [
+              {
+                "expr": "(opencost_container_memory_allocation_bytes / 1024 / 1024 / 1024 / 30 + opencost_pod_cpu_request * 0.031)",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "colorMode": "background",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "reduceOptions": {
+                "values": false,
+                "fields": "",
+                "calcs": ["lastNotNull"]
+              },
+              "textMode": "auto"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "unit": "currencyUSD"
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 4,
+            "title": "30-Day Cost Trend",
+            "type": "timeseries",
+            "gridPos": {
+              "h": 8,
+              "w": 24,
+              "x": 0,
+              "y": 4
+            },
+            "targets": [
+              {
+                "expr": "do_cost_exporter_daily_cost",
+                "legendFormat": "Daily Cost (DigitalOcean)",
+                "refId": "A"
+              },
+              {
+                "expr": "avg_over_time(do_cost_exporter_daily_cost[30d])",
+                "legendFormat": "30-Day Average",
+                "refId": "B"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "tooltip": false,
+                    "viz": false,
+                    "legend": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "tooltip": false,
+                    "viz": false,
+                    "legend": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 100
+                    },
+                    {
+                      "color": "red",
+                      "value": 150
+                    }
+                  ]
+                },
+                "unit": "currencyUSD"
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": ["min", "mean", "max"],
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "tooltip": {
+                "mode": "multi"
+              }
+            }
+          },
+          {
+            "id": 5,
+            "title": "Cost by Resource Type",
+            "type": "table",
+            "gridPos": {
+              "h": 8,
+              "w": 24,
+              "x": 0,
+              "y": 12
+            },
+            "targets": [
+              {
+                "expr": "sum by (resource_type, environment) (do_cost_exporter_daily_cost)",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "showHeader": true,
+              "sortBy": [
+                {
+                  "displayName": "Value",
+                  "desc": true
+                }
+              ]
+            },
+            "transformations": [
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {
+                    "Time": true,
+                    "__name__": true,
+                    "job": true,
+                    "instance": true
+                  },
+                  "indexByName": {
+                    "resource_type": 0,
+                    "environment": 1,
+                    "Value": 2
+                  },
+                  "renameByName": {
+                    "resource_type": "Resource Type",
+                    "environment": "Environment",
+                    "Value": "Daily Cost (USD)"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Staging vs Production Costs",
+            "type": "barchart",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 20
+            },
+            "targets": [
+              {
+                "expr": "sum by (environment) (do_cost_exporter_daily_cost)",
+                "legendFormat": "{{ environment }}",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "barRadius": 0,
+              "barWidth": 0.97,
+              "colorByField": "",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 100,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "tooltip": false,
+                  "viz": false,
+                  "legend": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": true,
+                "stacking": "normal",
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "fullHighlight": false,
+              "groupWidth": 0.7,
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "orientation": "auto",
+              "showDataPoints": "never",
+              "stacking": "normal",
+              "tooltip": {
+                "mode": "single"
+              },
+              "xTickLabelRotation": 0,
+              "xTickLabelSpacing": 0
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "bars",
+                  "fillOpacity": 100,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "tooltip": false,
+                    "viz": false,
+                    "legend": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": "normal",
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "unit": "currencyUSD"
+              },
+              "overrides": []
+            }
+          },
+          {
+            "id": 7,
+            "title": "Cost Alerts & Anomalies",
+            "type": "alertlist",
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 20
+            },
+            "options": {
+              "alertName": "",
+              "dashboardAlerts": true,
+              "dashboardTitle": "",
+              "maxItems": 10,
+              "sortOrder": 3,
+              "stateFilter": {
+                "firing": true,
+                "pending": true,
+                "noData": false
+              },
+              "tags": ["cost"]
+            }
+          }
+        ],
+        "refresh": "30s",
+        "schemaVersion": 38,
+        "style": "dark",
+        "templating": {
+          "list": [
+            {
+              "current": {
+                "selected": false,
+                "text": "Last hour",
+                "value": "1h"
+              },
+              "hide": 0,
+              "includeAll": false,
+              "label": "Time Range",
+              "multi": false,
+              "name": "time_range",
+              "options": [
+                {
+                  "selected": false,
+                  "text": "Last 6 hours",
+                  "value": "6h"
+                },
+                {
+                  "selected": true,
+                  "text": "Last 24 hours",
+                  "value": "24h"
+                },
+                {
+                  "selected": false,
+                  "text": "Last 7 days",
+                  "value": "7d"
+                },
+                {
+                  "selected": false,
+                  "text": "Last 30 days",
+                  "value": "30d"
+                }
+              ],
+              "query": "6h, 24h, 7d, 30d",
+              "queryValue": "",
+              "skipUrlSync": false,
+              "sort": 0,
+              "type": "custom"
+            }
+          ]
+        },
+        "time": {
+          "from": "now-24h",
+          "to": "now"
+        },
+        "timepicker": {},
+        "uid": "cost-monitoring",
+        "version": 1
+      }
+    }
+{{- end }}

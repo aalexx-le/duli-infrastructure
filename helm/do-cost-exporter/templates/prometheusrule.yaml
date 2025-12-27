@@ -1,0 +1,44 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cost-monitoring
+  namespace: monitoring
+spec:
+  groups:
+    - name: cost.rules
+      interval: 30s
+      rules:
+        # Daily cost report - always fires to send daily summary
+        - alert: DailyCostReport
+          expr: do_cost_exporter_daily_cost >= 0
+          for: 1m
+          labels:
+            severity: info
+            category: cost
+          annotations:
+            summary: "Daily Cost Report"
+            description: "DigitalOcean daily cost: ${{ $value | humanize }}. Monitor infrastructure spending."
+
+        # Daily DigitalOcean cost breakdown alert
+        - alert: DailyDigitalOceanCostAlert
+          expr: do_cost_exporter_daily_cost > 0
+          for: 1m
+          labels:
+            severity: info
+            category: cost
+          annotations:
+            summary: "Daily DigitalOcean Cost"
+            description: "Daily cost summary: ${{ $value | humanize }}. Includes droplets, volumes, load balancers, and other services."
+
+        # Alert for cost anomaly detection
+        - alert: CostAnomalyDetected
+          expr: |
+            abs(do_cost_exporter_daily_cost - avg_over_time(do_cost_exporter_daily_cost[7d])) 
+            > (avg_over_time(do_cost_exporter_daily_cost[7d]) * 0.25)
+          for: 10m
+          labels:
+            severity: info
+            category: cost
+          annotations:
+            summary: "Cost anomaly detected"
+            description: "Daily cost deviation exceeds 25% from 7-day average. Current: ${{ $value | humanize }}"

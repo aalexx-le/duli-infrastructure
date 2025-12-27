@@ -1,6 +1,31 @@
 # Alertmanager
 alertmanager:
   enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: 'default'
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      routes:
+        - receiver: 'discord-cost-alerts'
+          group_by: ['alertname', 'severity']
+          match:
+            category: 'cost'
+          group_wait: 1m
+          group_interval: 24h
+          repeat_interval: 24h
+          continue: true
+    receivers:
+      - name: 'default'
+        # Default receiver (can be null or configure email, etc.)
+      - name: 'discord-cost-alerts'
+        webhook_configs:
+          - url: 'http://alertmanager-discord.monitoring.svc.cluster.local:9094'
+            send_resolved: true
   alertmanagerSpec:
     replicas: 1
     retention: 120h  # 5 days

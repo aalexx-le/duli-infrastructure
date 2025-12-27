@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: do-cost-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: do-cost-exporter
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: do-cost-exporter
+  template:
+    metadata:
+      labels:
+        app: do-cost-exporter
+    spec:
+      containers:
+      - name: exporter
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command:
+          - /bin/sh
+          - -c
+          - pip install prometheus-client requests && python /app/exporter.py
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: metrics
+        env:
+        - name: DO_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.do.apiTokenSecret }}
+              key: token
+        - name: METRICS_PORT
+          value: "{{ .Values.service.port }}"
+        - name: POLL_INTERVAL
+          value: "{{ .Values.do.pollInterval }}"
+        resources: {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: app
+          mountPath: /app
+      volumes:
+      - name: app
+        configMap:
+          name: do-exporter-script
