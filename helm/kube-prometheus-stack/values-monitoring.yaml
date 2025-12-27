@@ -13,11 +13,18 @@ alertmanager:
       routes:
         - receiver: 'discord-cost-alerts'
           group_by: ['alertname', 'severity']
-          match:
-            category: 'cost'
+          matchers:
+            - category = 'cost'
           group_wait: 1m
           group_interval: 24h
           repeat_interval: 24h
+          continue: true
+        - receiver: 'discord-cost-alerts'
+          group_by: ['alertname', 'severity']
+          matchers:
+            - severity = 'critical'
+          group_wait: 30s
+          repeat_interval: 1h
           continue: true
     receivers:
       - name: 'default'
