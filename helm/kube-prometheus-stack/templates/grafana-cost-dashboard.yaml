@@ -327,7 +327,7 @@ data:
             "targets": [
               {
                 "expr": "sum by (environment) (do_cost_exporter_daily_cost)",
-                "legendFormat": "{{ environment }}",
+                "legendFormat": "{{`{{ environment }}`}}",
                 "refId": "A"
               }
             ],

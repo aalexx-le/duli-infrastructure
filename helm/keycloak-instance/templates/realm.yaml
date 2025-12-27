@@ -55,7 +55,6 @@ spec:
         directAccessGrantsEnabled: false
         implicitFlowEnabled: false
         redirectUris:
-          - "exp://*"
-          - "duliapp://auth/callback"
+          - "*"
         webOrigins:
           - "*"
