@@ -17,7 +17,7 @@ spec:
             category: cost
           annotations:
             summary: "Daily Cost Report"
-            description: "DigitalOcean daily cost: ${{ $value | humanize }}. Monitor infrastructure spending."
+            description: "DigitalOcean daily cost: $${value | humanize}}. Monitor infrastructure spending."
 
         # Daily DigitalOcean cost breakdown alert
         - alert: DailyDigitalOceanCostAlert
@@ -28,7 +28,7 @@ spec:
             category: cost
           annotations:
             summary: "Daily DigitalOcean Cost"
-            description: "Daily cost summary: ${{ $value | humanize }}. Includes droplets, volumes, load balancers, and other services."
+            description: "Daily cost summary: $${value | humanize}}. Includes droplets, volumes, load balancers, and other services."
 
         # Alert for cost anomaly detection
         - alert: CostAnomalyDetected
@@ -41,4 +41,4 @@ spec:
             category: cost
           annotations:
             summary: "Cost anomaly detected"
-            description: "Daily cost deviation exceeds 25% from 7-day average. Current: ${{ $value | humanize }}"
+            description: "Daily cost deviation exceeds 25% from 7-day average. Current: $${value | humanize}}"
