@@ -5,4 +5,4 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   exporter.py: |
-{{ include (print $.Template.BasePath "/../files/exporter.py") . | indent 4 }}
+{{ .Files.Get "files/exporter.py" | indent 4 }}
