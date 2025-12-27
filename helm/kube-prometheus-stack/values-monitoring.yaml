@@ -153,6 +153,13 @@ prometheus:
     scrapeTimeout: 10s
     evaluationInterval: 30s
     
+    # Send alerts to AlertManager
+    alertingEndpoints:
+      - name: kube-prometheus-stack-alertmanager
+        namespace: monitoring
+        port: http-web
+        pathPrefix: "/"
+    
     # Storage
     storageSpec:
       volumeClaimTemplate:
