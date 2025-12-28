@@ -23,5 +23,3 @@ spec:
               • **{{ .Labels.resource_name }}** ({{ .Labels.resource_type | title }}): **${{ .Value | humanize 2 }}/day**
                 Type: {{ .Labels.specs }}
               {{ end }}
-              
-              📊 [View in Grafana](https://grafana.duli.one/d/cost-monitoring)
