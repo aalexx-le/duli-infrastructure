@@ -14,15 +14,15 @@ alertmanager:
         - receiver: 'discord-cost-alerts'
           group_by: ['alertname', 'severity']
           matchers:
-            - category = 'cost'
-          group_wait: 1m
+            - category="cost"
+          group_wait: 10s
           group_interval: 24h
           repeat_interval: 24h
           continue: true
         - receiver: 'discord-cost-alerts'
           group_by: ['alertname', 'severity']
           matchers:
-            - severity = 'critical'
+            - severity="critical"
           group_wait: 30s
           repeat_interval: 1h
           continue: true
