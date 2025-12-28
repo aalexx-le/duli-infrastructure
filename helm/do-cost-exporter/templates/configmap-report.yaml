@@ -5,4 +5,3 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
 {{ (.Files.Glob "files/report.py").AsConfig | indent 2 }}
-{{ (.Files.Glob "files/report_template.md").AsConfig | indent 2 }}
