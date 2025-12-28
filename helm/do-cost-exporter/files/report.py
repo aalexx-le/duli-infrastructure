@@ -163,6 +163,8 @@ def format_discord_message(resources):
     total_mtd = total_cost * days_elapsed
     total_estimated = total_cost * days_in_month
     
+    severity = "warning" if total_estimated > 100 else "normal"
+    
     context = {
         "period": period,
         "total_today": total_today,
@@ -180,21 +182,31 @@ def format_discord_message(resources):
         "lb_today": lb_today,
         "lb_mtd": lb_mtd,
         "lb_estimated": lb_estimated,
-        "severity": "warning" if total_estimated > 90 else "normal",
+        "severity": severity,
     }
     
     with open(TEMPLATE_PATH) as f:
         template = Template(f.read())
     
-    return template.render(**context).strip()
+    return template.render(**context).strip(), severity
 
-def send_to_discord(message):
-    """Send message to Discord webhook"""
+def send_to_discord(message, severity="normal"):
+    """Send message to Discord webhook with colored embed"""
     if not DISCORD_WEBHOOK:
         print("No Discord webhook configured")
         return
     
-    response = requests.post(DISCORD_WEBHOOK, json={"content": message})
+    # Color codes: green=5763719, red=15548997, yellow=16705372
+    color = 5763719 if severity == "normal" else 15548997  # green or red
+    
+    payload = {
+        "embeds": [{
+            "description": message,
+            "color": color
+        }]
+    }
+    
+    response = requests.post(DISCORD_WEBHOOK, json=payload)
     
     if response.status_code == 204:
         print("Message sent successfully")
@@ -207,9 +219,9 @@ def main():
         print("No cost data found")
         return
     
-    message = format_discord_message(resources)
+    message, severity = format_discord_message(resources)
     print(message)
-    send_to_discord(message)
+    send_to_discord(message, severity)
 
 if __name__ == "__main__":
     main()
