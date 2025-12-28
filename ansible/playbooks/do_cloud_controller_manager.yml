@@ -57,41 +57,42 @@
         dest: "/tmp/do-ccm-{{ do_ccm_version }}.yml"
       run_once: true
 
-    - name: Create DigitalOcean API token secret
-      block:
-        - name: Create secret in kube-system
-          kubernetes.core.k8s:
-            state: present
-            definition:
-              apiVersion: v1
-              kind: Secret
-              metadata:
-                name: digitalocean
-                namespace: kube-system
-                annotations:
-                  # Reflector sync configuration - replicate to monitoring namespace
-                  reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-                  reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-                  reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "monitoring"
-              type: Opaque
-              stringData:
-                access-token: "{{ vault_do_api_token }}"
-            kubeconfig: "{{ kubeconfig_path }}"
-        
-        - name: Add reflector annotations to existing secret
-          kubernetes.core.k8s:
-            state: patched
-            kind: Secret
+    - name: Create DigitalOcean API token secret (fresh install)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
             name: digitalocean
             namespace: kube-system
-            definition:
-              metadata:
-                annotations:
-                  reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-                  reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-                  reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "monitoring"
-            kubeconfig: "{{ kubeconfig_path }}"
+            annotations:
+              # Reflector sync configuration - replicate to monitoring namespace
+              reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+              reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+              reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "monitoring"
+          type: Opaque
+          stringData:
+            access-token: "{{ vault_do_api_token }}"
+        kubeconfig: "{{ kubeconfig_path }}"
       when: ccm_check.resources | length == 0
+      no_log: true
+      run_once: true
+
+    - name: Ensure reflector annotations on digitalocean secret (existing or new)
+      kubernetes.core.k8s:
+        state: present
+        kind: Secret
+        name: digitalocean
+        namespace: kube-system
+        definition:
+          metadata:
+            annotations:
+              # Reflector sync configuration - replicate to monitoring namespace
+              reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+              reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+              reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "monitoring"
+        kubeconfig: "{{ kubeconfig_path }}"
       no_log: true
       run_once: true
 
