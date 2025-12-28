@@ -2,7 +2,7 @@
 import os
 import re
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from jinja2 import Template
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
@@ -17,10 +17,23 @@ def query_prometheus(query):
         return []
     return data["data"]["result"]
 
-def get_days_elapsed_this_month():
-    """Get number of days elapsed in current billing period (from 1st of month)"""
+def get_billing_period():
+    """Get billing period info (start date, end date, days elapsed)"""
     now = datetime.now()
-    return now.day
+    start_date = now.replace(day=1)
+    # End of month
+    if now.month == 12:
+        end_of_month = now.replace(year=now.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        end_of_month = now.replace(month=now.month + 1, day=1) - timedelta(days=1)
+    
+    return {
+        "start": start_date.strftime('%b %d'),
+        "today": now.strftime('%b %d'),
+        "end": end_of_month.strftime('%b %d'),
+        "days_elapsed": now.day,
+        "days_in_month": end_of_month.day,
+    }
 
 def get_pvc_service_map():
     """Build a map from PV name to service name using kube-state-metrics"""
@@ -105,41 +118,63 @@ def format_discord_message(resources):
     loadbalancers = [r for r in resources if r["type"] == "loadbalancer"]
     lb_total_cost = sum(lb["cost"] for lb in loadbalancers)
     
-    # Calculate MTD based on daily cost * days elapsed this month
-    days_elapsed = get_days_elapsed_this_month()
+    # Get billing period info
+    period = get_billing_period()
+    days_elapsed = period["days_elapsed"]
+    days_in_month = period["days_in_month"]
     
-    # Add MTD to each droplet
+    # Add costs to each droplet
     droplets = [r for r in resources if r["type"] == "droplet"]
+    droplets_today = 0
     droplets_mtd = 0
+    droplets_estimated = 0
     for droplet in droplets:
+        droplet["today"] = droplet["cost"]
         droplet["mtd"] = droplet["cost"] * days_elapsed
+        droplet["estimated"] = droplet["cost"] * days_in_month
+        droplets_today += droplet["today"]
         droplets_mtd += droplet["mtd"]
+        droplets_estimated += droplet["estimated"]
     
-    # Add MTD to each volume group
+    # Add costs to each volume group
+    volumes_today = 0
     volumes_mtd = 0
+    volumes_estimated = 0
     for vol_group in grouped_volumes:
+        vol_group["today"] = vol_group["cost"]
         vol_group["mtd"] = vol_group["cost"] * days_elapsed
+        vol_group["estimated"] = vol_group["cost"] * days_in_month
+        volumes_today += vol_group["today"]
         volumes_mtd += vol_group["mtd"]
+        volumes_estimated += vol_group["estimated"]
     
-    # LB MTD
+    # LB costs
+    lb_today = lb_total_cost
     lb_mtd = lb_total_cost * days_elapsed
+    lb_estimated = lb_total_cost * days_in_month
     
-    # Total MTD
+    # Totals
+    total_today = total_cost
     total_mtd = total_cost * days_elapsed
+    total_estimated = total_cost * days_in_month
     
     context = {
-        "date": datetime.now().strftime('%Y-%m-%d'),
-        "days_elapsed": days_elapsed,
-        "total_daily": total_cost,
-        "total_monthly": total_cost * 30,
+        "period": period,
+        "total_today": total_today,
         "total_mtd": total_mtd,
+        "total_estimated": total_estimated,
         "droplets": droplets,
+        "droplets_today": droplets_today,
         "droplets_mtd": droplets_mtd,
+        "droplets_estimated": droplets_estimated,
         "volumes": grouped_volumes,
+        "volumes_today": volumes_today,
         "volumes_mtd": volumes_mtd,
+        "volumes_estimated": volumes_estimated,
         "lb_count": len(loadbalancers),
-        "lb_cost": lb_total_cost,
+        "lb_today": lb_today,
         "lb_mtd": lb_mtd,
+        "lb_estimated": lb_estimated,
     }
     
     with open(TEMPLATE_PATH) as f:
