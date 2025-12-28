@@ -1,8 +1,8 @@
-## Cost Report ({{ period.start }} - {{ period.today }})
+{% if severity == "warning" %}⚠️ {% endif %}## Cost Report ({{ period.start }} - {{ period.today }})
 ```
-Today: ${{ "%.2f"|format(total_today) }} | MTD: ${{ "%.2f"|format(total_mtd) }} | Est: ${{ "%.2f"|format(total_estimated) }}
+Today: ${{ "%.2f"|format(total_today) }} | MTD: ${{ "%.2f"|format(total_mtd) }} | Est: ${{ "%.2f"|format(total_estimated) }}{% if severity == "warning" %} ⚠️ OVER BUDGET{% endif %}
 ```
-{%- if droplets -%}
+{% if droplets -%}
 ### Droplets (${{ "%.2f"|format(droplets_mtd) }})
 {% for r in droplets -%}
 • droplet-{{ loop.index }}: **${{ "%.2f"|format(r.mtd) }}** - {{ r.specs }}

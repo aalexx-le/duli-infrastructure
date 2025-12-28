@@ -180,6 +180,7 @@ def format_discord_message(resources):
         "lb_today": lb_today,
         "lb_mtd": lb_mtd,
         "lb_estimated": lb_estimated,
+        "severity": "warning" if total_estimated > 90 else "normal",
     }
     
     with open(TEMPLATE_PATH) as f:
