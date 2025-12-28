@@ -97,13 +97,17 @@ def format_discord_message(resources):
     pvc_map = get_pvc_service_map()
     grouped_volumes = group_volumes_by_service(volumes, pvc_map)
     
+    loadbalancers = [r for r in resources if r["type"] == "loadbalancer"]
+    lb_total_cost = sum(lb["cost"] for lb in loadbalancers)
+    
     context = {
         "date": datetime.now().strftime('%Y-%m-%d'),
         "total_daily": total_cost,
         "total_monthly": total_cost * 30,
         "droplets": [r for r in resources if r["type"] == "droplet"],
         "volumes": grouped_volumes,
-        "loadbalancers": [r for r in resources if r["type"] == "loadbalancer"],
+        "lb_count": len(loadbalancers),
+        "lb_cost": lb_total_cost,
     }
     
     with open(TEMPLATE_PATH) as f:

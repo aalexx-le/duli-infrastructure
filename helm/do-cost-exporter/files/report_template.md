@@ -12,9 +12,7 @@
 • **{{ r.name }}**: ${{ "%.4f"|format(r.cost) }}/day - {{ r.size_gb }}GB ({{ r.count }} {% if r.count == 1 %}volume{% else %}volumes{% endif %})
 {% endfor -%}
 {% endif -%}
-{% if loadbalancers %}
+{% if lb_count > 0 %}
 ### Load Balancers
-{% for r in loadbalancers -%}
-• **{{ r.name }}**: ${{ "%.2f"|format(r.cost) }}/day
-{% endfor -%}
+• **{{ lb_count }} LB**: ${{ "%.2f"|format(lb_cost) }}/day
 {% endif %}
