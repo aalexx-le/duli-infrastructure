@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import requests
 from datetime import datetime
 from jinja2 import Template
@@ -8,17 +9,57 @@ PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
 TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", "/app/report_template.md")
 
-def get_costs():
-    """Query Prometheus for cost metrics"""
-    query = 'do_cost_exporter_resource_cost'
+def query_prometheus(query):
+    """Query Prometheus and return results"""
     response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={"query": query})
     data = response.json()
-    
     if data["status"] != "success":
         return []
+    return data["data"]["result"]
+
+def get_pvc_service_map():
+    """Build a map from PV name to service name using kube-state-metrics"""
+    results = query_prometheus("kube_persistentvolumeclaim_info")
+    pvc_map = {}
+    
+    for result in results:
+        labels = result["metric"]
+        pv_name = labels.get("volumename", "")
+        pvc_name = labels.get("persistentvolumeclaim", "")
+        namespace = labels.get("namespace", "")
+        
+        if not pv_name:
+            continue
+        
+        # Determine service name from PVC name patterns
+        service = None
+        if pvc_name.startswith("database-") or "keycloak-db" in pvc_name:
+            service = f"postgresql ({namespace})"
+        elif "redis" in pvc_name:
+            service = f"redis ({namespace})"
+        elif "queue" in pvc_name:
+            service = f"rabbitmq ({namespace})"
+        elif "grafana" in pvc_name:
+            service = "grafana (monitoring)"
+        elif "prometheus" in pvc_name:
+            service = "prometheus (monitoring)"
+        elif "alertmanager" in pvc_name:
+            service = "alertmanager (monitoring)"
+        elif "loki" in pvc_name:
+            service = "loki (monitoring)"
+        else:
+            service = f"{pvc_name} ({namespace})"
+        
+        pvc_map[pv_name] = service
+    
+    return pvc_map
+
+def get_costs():
+    """Query Prometheus for cost metrics"""
+    results = query_prometheus("do_cost_exporter_resource_cost")
     
     resources = []
-    for result in data["data"]["result"]:
+    for result in results:
         labels = result["metric"]
         value = float(result["value"][1])
         resources.append({
@@ -31,16 +72,37 @@ def get_costs():
     
     return sorted(resources, key=lambda x: x["cost"], reverse=True)
 
+def group_volumes_by_service(volumes, pvc_map):
+    """Group volumes by service and sum their costs"""
+    grouped = {}
+    for vol in volumes:
+        service = pvc_map.get(vol["name"], "unknown")
+        if service not in grouped:
+            grouped[service] = {"name": service, "cost": 0, "count": 0, "size_gb": 0}
+        grouped[service]["cost"] += vol["cost"]
+        grouped[service]["count"] += 1
+        # Extract size from specs like "40GB Storage"
+        specs = vol.get("specs", "")
+        match = re.search(r"(\d+)GB", specs)
+        if match:
+            grouped[service]["size_gb"] += int(match.group(1))
+    
+    return sorted(grouped.values(), key=lambda x: x["cost"], reverse=True)
+
 def format_discord_message(resources):
     """Format message using Jinja2 template"""
     total_cost = sum(r["cost"] for r in resources)
+    
+    volumes = [r for r in resources if r["type"] == "volume"]
+    pvc_map = get_pvc_service_map()
+    grouped_volumes = group_volumes_by_service(volumes, pvc_map)
     
     context = {
         "date": datetime.now().strftime('%Y-%m-%d'),
         "total_daily": total_cost,
         "total_monthly": total_cost * 30,
         "droplets": [r for r in resources if r["type"] == "droplet"],
-        "volumes": [r for r in resources if r["type"] == "volume"],
+        "volumes": grouped_volumes,
         "loadbalancers": [r for r in resources if r["type"] == "loadbalancer"],
     }
     

@@ -3,6 +3,8 @@ kind: CronJob
 metadata:
   name: cost-report
   namespace: {{ .Release.Namespace }}
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/configmap-report.yaml") . | sha256sum }}
 spec:
   schedule: "0 9 * * *"  # Daily at 9 AM UTC
   jobTemplate:
