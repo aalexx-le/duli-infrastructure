@@ -1,7 +1,7 @@
 ## Cost Report ({{ period.start }} - {{ period.today }})
-| Today | MTD | Est. Month |
-|-------|-----|------------|
-| ${{ "%.2f"|format(total_today) }} | ${{ "%.2f"|format(total_mtd) }} | ${{ "%.2f"|format(total_estimated) }} |
+```
+Today: ${{ "%.2f"|format(total_today) }} | MTD: ${{ "%.2f"|format(total_mtd) }} | Est: ${{ "%.2f"|format(total_estimated) }}
+```
 {% if droplets %}
 ### Droplets (${{ "%.2f"|format(droplets_mtd) }})
 {% for r in droplets -%}
