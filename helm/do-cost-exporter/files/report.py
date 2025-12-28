@@ -28,41 +28,43 @@ def get_mtd_billing():
         "Content-Type": "application/json"
     }
     
+    mtd = {
+        "billing_period": datetime.now().strftime('%Y-%m'),
+        "droplets": 0,
+        "volumes": 0,
+        "load_balancers": 0,
+        "total": 0,
+    }
+    
     try:
-        response = requests.get(
-            "https://api.digitalocean.com/v2/customers/my/invoices/preview",
-            headers=headers
-        )
-        if response.status_code != 200:
-            return None
+        url = "https://api.digitalocean.com/v2/customers/my/invoices/preview"
         
-        data = response.json()
-        invoice = data.get("invoice_preview", {})
-        
-        # Parse billing period
-        billing_period = invoice.get("billing_period", "")
-        
-        # Sum up by product category
-        mtd = {
-            "billing_period": billing_period,
-            "droplets": 0,
-            "volumes": 0,
-            "load_balancers": 0,
-            "total": 0,
-        }
-        
-        for item in invoice.get("product_charges", {}).get("items", []):
-            amount = float(item.get("amount", 0))
-            product = item.get("product", "").lower()
+        while url:
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200:
+                break
             
-            if "droplet" in product:
-                mtd["droplets"] += amount
-            elif "volume" in product or "storage" in product:
-                mtd["volumes"] += amount
-            elif "load balancer" in product:
-                mtd["load_balancers"] += amount
+            data = response.json()
             
-            mtd["total"] += amount
+            for item in data.get("invoice_items", []):
+                amount = float(item.get("amount", 0))
+                product = item.get("product", "").lower()
+                
+                # Skip credits and taxes for category breakdown
+                if product in ["credits", "taxes"]:
+                    continue
+                
+                if "droplet" in product:
+                    mtd["droplets"] += amount
+                elif "volume" in product:
+                    mtd["volumes"] += amount
+                elif "load balancer" in product:
+                    mtd["load_balancers"] += amount
+                
+                mtd["total"] += amount
+            
+            # Get next page URL
+            url = data.get("links", {}).get("pages", {}).get("next")
         
         return mtd
     except Exception as e:
