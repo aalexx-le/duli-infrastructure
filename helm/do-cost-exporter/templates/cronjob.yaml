@@ -26,6 +26,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.discord.secretName }}
                   key: {{ .Values.discord.secretKey }}
+            - name: DO_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.do.apiTokenSecret }}
+                  key: {{ .Values.do.apiTokenKey }}
             volumeMounts:
             - name: script
               mountPath: /app

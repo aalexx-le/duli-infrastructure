@@ -8,6 +8,7 @@ from jinja2 import Template
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
 TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", "/app/report_template.md")
+DO_API_TOKEN = os.getenv("DO_API_TOKEN", "")
 
 def query_prometheus(query):
     """Query Prometheus and return results"""
@@ -16,6 +17,57 @@ def query_prometheus(query):
     if data["status"] != "success":
         return []
     return data["data"]["result"]
+
+def get_mtd_billing():
+    """Get month-to-date billing from DigitalOcean invoice preview API"""
+    if not DO_API_TOKEN:
+        return None
+    
+    headers = {
+        "Authorization": f"Bearer {DO_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(
+            "https://api.digitalocean.com/v2/customers/my/invoices/preview",
+            headers=headers
+        )
+        if response.status_code != 200:
+            return None
+        
+        data = response.json()
+        invoice = data.get("invoice_preview", {})
+        
+        # Parse billing period
+        billing_period = invoice.get("billing_period", "")
+        
+        # Sum up by product category
+        mtd = {
+            "billing_period": billing_period,
+            "droplets": 0,
+            "volumes": 0,
+            "load_balancers": 0,
+            "total": 0,
+        }
+        
+        for item in invoice.get("product_charges", {}).get("items", []):
+            amount = float(item.get("amount", 0))
+            product = item.get("product", "").lower()
+            
+            if "droplet" in product:
+                mtd["droplets"] += amount
+            elif "volume" in product or "storage" in product:
+                mtd["volumes"] += amount
+            elif "load balancer" in product:
+                mtd["load_balancers"] += amount
+            
+            mtd["total"] += amount
+        
+        return mtd
+    except Exception as e:
+        print(f"Error fetching MTD billing: {e}")
+        return None
 
 def get_pvc_service_map():
     """Build a map from PV name to service name using kube-state-metrics"""
@@ -100,6 +152,9 @@ def format_discord_message(resources):
     loadbalancers = [r for r in resources if r["type"] == "loadbalancer"]
     lb_total_cost = sum(lb["cost"] for lb in loadbalancers)
     
+    # Get MTD billing from DO API
+    mtd = get_mtd_billing()
+    
     context = {
         "date": datetime.now().strftime('%Y-%m-%d'),
         "total_daily": total_cost,
@@ -108,6 +163,7 @@ def format_discord_message(resources):
         "volumes": grouped_volumes,
         "lb_count": len(loadbalancers),
         "lb_cost": lb_total_cost,
+        "mtd": mtd,
     }
     
     with open(TEMPLATE_PATH) as f:
