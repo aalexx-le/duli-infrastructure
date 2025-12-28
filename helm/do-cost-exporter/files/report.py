@@ -2,9 +2,11 @@
 import os
 import requests
 from datetime import datetime
+from jinja2 import Template
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
+TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", "/app/report_template.md")
 
 def get_costs():
     """Query Prometheus for cost metrics"""
@@ -30,42 +32,22 @@ def get_costs():
     return sorted(resources, key=lambda x: x["cost"], reverse=True)
 
 def format_discord_message(resources):
-    """Format message for Discord"""
+    """Format message using Jinja2 template"""
     total_cost = sum(r["cost"] for r in resources)
     
-    # Group by type
-    droplets = [r for r in resources if r["type"] == "droplet"]
-    volumes = [r for r in resources if r["type"] == "volume"]
-    lbs = [r for r in resources if r["type"] == "loadbalancer"]
+    context = {
+        "date": datetime.now().strftime('%Y-%m-%d'),
+        "total_daily": total_cost,
+        "total_monthly": total_cost * 30,
+        "droplets": [r for r in resources if r["type"] == "droplet"],
+        "volumes": [r for r in resources if r["type"] == "volume"],
+        "loadbalancers": [r for r in resources if r["type"] == "loadbalancer"],
+    }
     
-    lines = [
-        f"# 💰 Daily Cost Report - {datetime.now().strftime('%Y-%m-%d')}",
-        "",
-        f"**Total Daily Cost: ${total_cost:.2f}/day** (${total_cost * 30:.2f}/month)",
-        "",
-    ]
+    with open(TEMPLATE_PATH) as f:
+        template = Template(f.read())
     
-    if droplets:
-        lines.append("## 🖥️ Droplets")
-        for r in droplets:
-            lines.append(f"• **{r['name']}**: ${r['cost']:.2f}/day - {r['specs']}")
-        lines.append("")
-    
-    if volumes:
-        lines.append("## 💾 Volumes")
-        for r in volumes:
-            lines.append(f"• **{r['name'][:20]}...**: ${r['cost']:.4f}/day - {r['specs']}")
-        lines.append("")
-    
-    if lbs:
-        lines.append("## ⚖️ Load Balancers")
-        for r in lbs:
-            lines.append(f"• **{r['name'][:20]}...**: ${r['cost']:.2f}/day")
-        lines.append("")
-    
-    lines.append("_[View in Grafana](https://grafana.duli.one/d/cost-monitoring)_")
-    
-    return "\n".join(lines)
+    return template.render(**context).strip()
 
 def send_to_discord(message):
     """Send message to Discord webhook"""
@@ -73,8 +55,7 @@ def send_to_discord(message):
         print("No Discord webhook configured")
         return
     
-    payload = {"content": message}
-    response = requests.post(DISCORD_WEBHOOK, json=payload)
+    response = requests.post(DISCORD_WEBHOOK, json={"content": message})
     
     if response.status_code == 204:
         print("Message sent successfully")

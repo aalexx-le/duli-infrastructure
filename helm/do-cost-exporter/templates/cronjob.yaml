@@ -16,7 +16,7 @@ spec:
               - /bin/sh
               - -c
               - |
-                pip install -q requests prometheus-api-client
+                pip install -q requests jinja2
                 python /app/report.py
             env:
             - name: PROMETHEUS_URL
