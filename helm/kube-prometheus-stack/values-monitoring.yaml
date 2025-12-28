@@ -27,6 +27,8 @@ alertmanager:
           - 'namespace'
       - target_matchers:
           - 'alertname="InfoInhibitor"'
+      - target_matchers:
+          - 'alertname="etcdInsufficientMembers"'
     route:
       receiver: 'default'
       group_by: ['alertname', 'cluster', 'service']
