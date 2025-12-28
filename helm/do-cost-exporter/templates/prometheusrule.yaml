@@ -15,11 +15,12 @@ spec:
             severity: warning
             category: cost
           annotations:
-            summary: "💰 Daily Cost Report"
+            summary: "💰 Daily Cost Report - {{ $labels.resource_name }}"
             description: |
               **DigitalOcean Infrastructure Cost Breakdown**
               
-              {{ range query "do_cost_exporter_resource_cost" }}
-              • **{{ .Labels.resource_name }}** ({{ .Labels.resource_type | title }}): **${{ .Value | humanize 2 }}/day**
-                Type: {{ .Labels.specs }}
-              {{ end }}
+              • **{{ $labels.resource_name }}** ({{ $labels.resource_type }}): **${{ $value | humanize 2 }}/day**
+              • Specs: {{ $labels.specs }}
+              • Region: {{ $labels.region }}
+              
+              _Cost monitoring dashboard: https://grafana.duli.one/d/cost-monitoring_
