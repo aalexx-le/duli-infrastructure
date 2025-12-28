@@ -6,20 +6,18 @@ metadata:
   annotations:
     checksum/config: {{ include (print $.Template.BasePath "/configmap-report.yaml") . | sha256sum }}
 spec:
-  schedule: "0 9 * * *"  # Daily at 9 AM UTC
+  schedule: {{ .Values.report.schedule | quote }}
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: reporter
-            image: python:3.11-slim
+            image: {{ .Values.exporter.image }}
             command:
               - /bin/sh
               - -c
-              - |
-                pip install -q requests jinja2
-                python /app/report.py
+              - pip install -q requests jinja2 && python /app/report.py
             env:
             - name: PROMETHEUS_URL
               value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"

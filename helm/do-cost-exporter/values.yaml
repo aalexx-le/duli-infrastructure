@@ -1,27 +1,28 @@
-replicaCount: 1
+# DO Cost Exporter configuration
 
-image:
-  repository: python
-  tag: "3.11-slim"
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
+# Exporter settings
+exporter:
+  image: python:3.11-slim
   port: 8080
+  pollInterval: 3600  # seconds
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
 
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 50m
-    memory: 64Mi
-
+# DigitalOcean API
 do:
-  pollInterval: 3600
   apiTokenSecret: digitalocean
   apiTokenKey: access-token
 
+# Discord webhook for daily reports
 discord:
-  secretName: discord-webhook-secret  # Created via sealed secret
+  secretName: discord-webhook-secret
   secretKey: webhook_url
+
+# CronJob schedule (daily at 9 AM UTC)
+report:
+  schedule: "0 9 * * *"

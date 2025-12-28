@@ -3,10 +3,12 @@ kind: Service
 metadata:
   name: do-cost-exporter
   namespace: {{ .Release.Namespace }}
+  labels:
+    app: do-cost-exporter
 spec:
-  type: {{ .Values.service.type }}
+  type: ClusterIP
   ports:
-  - port: {{ .Values.service.port }}
+  - port: {{ .Values.exporter.port }}
     targetPort: metrics
     name: metrics
   selector:
