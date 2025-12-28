@@ -52,3 +52,6 @@ vault_oauth_google_client_secret: "your_google_client_secret_here"
 
 # Keycloak Backend Service Client Secret (Secret: keycloak-backend-service)
 vault_keycloak_backend_service_secret: "your_keycloak_backend_service_secret_here"
+
+# Discord Webhook for Cost Reports (Secret: discord-webhook-secret)
+vault_discord_webhook_url: "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"

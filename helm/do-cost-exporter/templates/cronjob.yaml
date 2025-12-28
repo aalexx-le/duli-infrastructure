@@ -26,8 +26,8 @@ spec:
             - name: DISCORD_WEBHOOK
               valueFrom:
                 secretKeyRef:
-                  name: alertmanager-discord-secret
-                  key: webhook_url
+                  name: {{ .Values.discord.secretName }}
+                  key: {{ .Values.discord.secretKey }}
             volumeMounts:
             - name: script
               mountPath: /app

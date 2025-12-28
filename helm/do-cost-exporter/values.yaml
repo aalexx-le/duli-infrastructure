@@ -21,3 +21,7 @@ do:
   pollInterval: 3600
   apiTokenSecret: digitalocean
   apiTokenKey: access-token
+
+discord:
+  secretName: discord-webhook-secret  # Created via sealed secret
+  secretKey: webhook_url
