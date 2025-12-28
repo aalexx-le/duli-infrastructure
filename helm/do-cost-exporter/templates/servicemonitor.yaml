@@ -8,7 +8,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: do-cost-exporter
+      app.kubernetes.io/instance: do-cost-exporter
   endpoints:
     - port: metrics
       interval: 30s
