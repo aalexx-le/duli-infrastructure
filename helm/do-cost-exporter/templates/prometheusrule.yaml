@@ -19,7 +19,7 @@ spec:
             description: |
               **DigitalOcean Infrastructure Cost Breakdown**
               
-              • **{{ $labels.resource_name }}** ({{ $labels.resource_type }}): **${{ $value | humanize 2 }}/day**
+              • **{{ $labels.resource_name }}** ({{ $labels.resource_type }}): **${{ $value | humanize }}/day**
               • Specs: {{ $labels.specs }}
               • Region: {{ $labels.region }}
               
