@@ -131,43 +131,36 @@ def build_embed(resources):
     title = f"Cost Report ({period['start']} - {period['today']})"
     embed = DiscordEmbed(title=title, color=color)
     
-    # Summary fields (3 columns)
-    embed.add_embed_field(name="Today", value=f"${total_today:.2f}", inline=True)
-    embed.add_embed_field(name="MTD", value=f"${total_mtd:.2f}", inline=True)
-    embed.add_embed_field(name="Est", value=f"${total_estimated:.2f}", inline=True)
+    # Summary fields (3 columns at top)
+    embed.add_embed_field(name="💳 Today", value=f"${total_today:.2f}", inline=True)
+    embed.add_embed_field(name="📅 Month-to-date", value=f"${total_mtd:.2f}", inline=True)
+    embed.add_embed_field(name="📈 Estimated", value=f"${total_estimated:.2f}", inline=True)
     
-    # Build description with resource breakdown
-    lines = []
-    
-    # Droplets
+    # Droplets as field
     droplets = [r for r in resources if r["type"] == "droplet"]
     if droplets:
         droplets_mtd = sum(d["cost"] * days for d in droplets)
-        lines.append(f"**Droplets (${droplets_mtd:.2f})**")
-        for i, d in enumerate(droplets, 1):
-            mtd = d["cost"] * days
-            lines.append(f"• droplet-{i}: **${mtd:.2f}** - {d['specs']}")
+        droplet_lines = [f"• droplet-{i}: **${d['cost']*days:.2f}** - {d['specs']}" for i, d in enumerate(droplets, 1)]
+        embed.add_embed_field(name=f"Droplets (${droplets_mtd:.2f})", value="\n".join(droplet_lines), inline=False)
     
-    # Volumes
+    # Volumes as field
     volumes = [r for r in resources if r["type"] == "volume"]
     pvc_map = get_pvc_service_map()
     grouped_volumes = group_volumes_by_service(volumes, pvc_map)
     if grouped_volumes:
         volumes_mtd = sum(v["cost"] * days for v in grouped_volumes)
-        lines.append(f"\n**Volumes (${volumes_mtd:.2f})**")
+        volume_lines = []
         for v in grouped_volumes:
             mtd = v["cost"] * days
             count_text = "volume" if v["count"] == 1 else "volumes"
-            lines.append(f"• {v['name']}: **${mtd:.2f}** - {v['size_gb']}GB ({v['count']} {count_text})")
+            volume_lines.append(f"• {v['name']}: **${mtd:.2f}** - {v['size_gb']}GB ({v['count']} {count_text})")
+        embed.add_embed_field(name=f"Volumes (${volumes_mtd:.2f})", value="\n".join(volume_lines), inline=False)
     
-    # Load Balancers
+    # Load Balancers as field
     lbs = [r for r in resources if r["type"] == "loadbalancer"]
     if lbs:
         lb_mtd = sum(lb["cost"] * days for lb in lbs)
-        lines.append(f"\n**Load Balancers (${lb_mtd:.2f})**")
-        lines.append(f"• {len(lbs)} LB: **${lb_mtd:.2f}**")
-    
-    embed.set_description("\n".join(lines))
+        embed.add_embed_field(name=f"Load Balancers (${lb_mtd:.2f})", value=f"• {len(lbs)} LB: **${lb_mtd:.2f}**", inline=False)
     
     return embed, severity
 
