@@ -8,7 +8,6 @@ from jinja2 import Template
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
 TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", "/app/report_template.md")
-DO_API_TOKEN = os.getenv("DO_API_TOKEN", "")
 
 def query_prometheus(query):
     """Query Prometheus and return results"""
@@ -18,78 +17,10 @@ def query_prometheus(query):
         return []
     return data["data"]["result"]
 
-def get_mtd_billing():
-    """Get month-to-date billing from DigitalOcean invoice preview API"""
-    if not DO_API_TOKEN:
-        return None
-    
-    headers = {
-        "Authorization": f"Bearer {DO_API_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    mtd = {
-        "billing_period": datetime.now().strftime('%Y-%m'),
-        "droplets": 0,
-        "volumes": 0,
-        "load_balancers": 0,
-        "total": 0,
-        "by_resource": {},  # resource_name -> amount
-    }
-    
-    try:
-        url = "https://api.digitalocean.com/v2/customers/my/invoices/preview"
-        
-        while url:
-            response = requests.get(url, headers=headers)
-            if response.status_code != 200:
-                break
-            
-            data = response.json()
-            
-            for item in data.get("invoice_items", []):
-                amount = float(item.get("amount", 0))
-                product = item.get("product", "").lower()
-                description = item.get("description", "")
-                
-                # Skip credits and taxes for category breakdown
-                if product in ["credits", "taxes"]:
-                    continue
-                
-                # Extract resource name from description
-                # Droplet: "worker-01 (nyc3) - 2CPU 4096MB RAM 80GB Disk"
-                # Volume: "pvc-xxx (nyc3) - 2.00GB Volume"
-                # LB: "a39a558640e984a09a8ee28abbcbd00e"
-                resource_name = None
-                if "droplet" in product:
-                    mtd["droplets"] += amount
-                    # Extract droplet name (first part before " (")
-                    match = re.match(r"^([^\s(]+)", description)
-                    if match:
-                        resource_name = match.group(1)
-                elif "volume" in product:
-                    mtd["volumes"] += amount
-                    # Extract volume ID (pvc-xxx)
-                    match = re.match(r"^(pvc-[a-f0-9-]+)", description)
-                    if match:
-                        resource_name = match.group(1)
-                elif "load balancer" in product:
-                    mtd["load_balancers"] += amount
-                    resource_name = "load_balancer"
-                
-                mtd["total"] += amount
-                
-                # Accumulate by resource
-                if resource_name:
-                    mtd["by_resource"][resource_name] = mtd["by_resource"].get(resource_name, 0) + amount
-            
-            # Get next page URL
-            url = data.get("links", {}).get("pages", {}).get("next")
-        
-        return mtd
-    except Exception as e:
-        print(f"Error fetching MTD billing: {e}")
-        return None
+def get_days_elapsed_this_month():
+    """Get number of days elapsed in current billing period (from 1st of month)"""
+    now = datetime.now()
+    return now.day
 
 def get_pvc_service_map():
     """Build a map from PV name to service name using kube-state-metrics"""
@@ -174,39 +105,41 @@ def format_discord_message(resources):
     loadbalancers = [r for r in resources if r["type"] == "loadbalancer"]
     lb_total_cost = sum(lb["cost"] for lb in loadbalancers)
     
-    # Get MTD billing from DO API
-    mtd = get_mtd_billing()
+    # Calculate MTD based on daily cost * days elapsed this month
+    days_elapsed = get_days_elapsed_this_month()
     
     # Add MTD to each droplet
     droplets = [r for r in resources if r["type"] == "droplet"]
+    droplets_mtd = 0
     for droplet in droplets:
-        droplet["mtd"] = mtd["by_resource"].get(droplet["name"], 0) if mtd else 0
+        droplet["mtd"] = droplet["cost"] * days_elapsed
+        droplets_mtd += droplet["mtd"]
     
-    # Add MTD to each volume group (sum up all PVCs in the group)
-    if mtd:
-        for vol_group in grouped_volumes:
-            vol_group["mtd"] = 0
-        # We need to track which PVCs belong to which service group
-        # This requires matching PVC names from invoice to our service mapping
-        for pv_name, service_name in pvc_map.items():
-            # Find matching volume group
-            for vol_group in grouped_volumes:
-                if vol_group["name"] == service_name:
-                    # Find MTD for this PVC
-                    vol_mtd = mtd["by_resource"].get(pv_name, 0)
-                    vol_group["mtd"] = vol_group.get("mtd", 0) + vol_mtd
-                    break
+    # Add MTD to each volume group
+    volumes_mtd = 0
+    for vol_group in grouped_volumes:
+        vol_group["mtd"] = vol_group["cost"] * days_elapsed
+        volumes_mtd += vol_group["mtd"]
+    
+    # LB MTD
+    lb_mtd = lb_total_cost * days_elapsed
+    
+    # Total MTD
+    total_mtd = total_cost * days_elapsed
     
     context = {
         "date": datetime.now().strftime('%Y-%m-%d'),
+        "days_elapsed": days_elapsed,
         "total_daily": total_cost,
         "total_monthly": total_cost * 30,
+        "total_mtd": total_mtd,
         "droplets": droplets,
+        "droplets_mtd": droplets_mtd,
         "volumes": grouped_volumes,
+        "volumes_mtd": volumes_mtd,
         "lb_count": len(loadbalancers),
         "lb_cost": lb_total_cost,
-        "lb_mtd": mtd["by_resource"].get("load_balancer", 0) if mtd else 0,
-        "mtd": mtd,
+        "lb_mtd": lb_mtd,
     }
     
     with open(TEMPLATE_PATH) as f:
