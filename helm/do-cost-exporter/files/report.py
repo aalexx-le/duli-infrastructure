@@ -4,10 +4,12 @@ import re
 import requests
 from datetime import datetime, timedelta
 from jinja2 import Template
+from discord_webhook import DiscordWebhook, DiscordEmbed
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus:9090")
-DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK", "")
 TEMPLATE_PATH = os.getenv("TEMPLATE_PATH", "/app/report_template.md")
+COST_THRESHOLD = float(os.getenv("COST_THRESHOLD", "100"))
 
 def query_prometheus(query):
     """Query Prometheus and return results"""
@@ -163,7 +165,7 @@ def format_discord_message(resources):
     total_mtd = total_cost * days_elapsed
     total_estimated = total_cost * days_in_month
     
-    severity = "warning" if total_estimated > 100 else "normal"
+    severity = "warning" if total_estimated > COST_THRESHOLD else "normal"
     
     context = {
         "period": period,
@@ -192,26 +194,22 @@ def format_discord_message(resources):
 
 def send_to_discord(message, severity="normal"):
     """Send message to Discord webhook with colored embed"""
-    if not DISCORD_WEBHOOK:
+    if not DISCORD_WEBHOOK_URL:
         print("No Discord webhook configured")
         return
     
-    # Color codes: green=5763719, red=15548997, yellow=16705372
-    color = 5763719 if severity == "normal" else 15548997  # green or red
+    # Color codes: green=0x57F287, red=0xED4245
+    color = 0x57F287 if severity == "normal" else 0xED4245
     
-    payload = {
-        "embeds": [{
-            "description": message,
-            "color": color
-        }]
-    }
+    webhook = DiscordWebhook(url=DISCORD_WEBHOOK_URL)
+    embed = DiscordEmbed(description=message, color=color)
+    webhook.add_embed(embed)
     
-    response = requests.post(DISCORD_WEBHOOK, json=payload)
-    
-    if response.status_code == 204:
+    response = webhook.execute()
+    if response.status_code in [200, 204]:
         print("Message sent successfully")
     else:
-        print(f"Failed to send: {response.status_code} - {response.text}")
+        print(f"Failed to send: {response.status_code}")
 
 def main():
     resources = get_costs()

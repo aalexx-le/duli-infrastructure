@@ -17,7 +17,7 @@ spec:
             command:
               - /bin/sh
               - -c
-              - pip install -q requests jinja2 && python /app/report.py
+              - pip install -q requests jinja2 discord-webhook && python /app/report.py
             env:
             - name: PROMETHEUS_URL
               value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
