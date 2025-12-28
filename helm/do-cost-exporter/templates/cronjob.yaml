@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cost-report
+  namespace: {{ .Release.Namespace }}
+spec:
+  schedule: "0 9 * * *"  # Daily at 9 AM UTC
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: reporter
+            image: python:3.11-slim
+            command:
+              - /bin/sh
+              - -c
+              - |
+                pip install -q requests prometheus-api-client
+                python /app/report.py
+            env:
+            - name: PROMETHEUS_URL
+              value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+            - name: DISCORD_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-discord-secret
+                  key: webhook_url
+            volumeMounts:
+            - name: script
+              mountPath: /app
+          volumes:
+          - name: script
+            configMap:
+              name: cost-report-script
+          restartPolicy: OnFailure

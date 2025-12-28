@@ -8,19 +8,15 @@ spec:
     - name: cost.rules
       interval: 30s
       rules:
-        - alert: DailyCostReport
-          expr: do_cost_exporter_resource_cost >= 0
-          for: 1m
+        # Cost anomaly detection - only fires when cost spikes unexpectedly
+        - alert: CostAnomalyDetected
+          expr: |
+            abs(sum(do_cost_exporter_resource_cost) - avg_over_time(sum(do_cost_exporter_resource_cost)[7d]))
+            > (avg_over_time(sum(do_cost_exporter_resource_cost)[7d]) * 0.25)
+          for: 10m
           labels:
             severity: warning
             category: cost
           annotations:
-            summary: "💰 Daily Cost Report - {{ "{{" }} $labels.resource_name {{ "}}" }}"
-            description: |
-              **DigitalOcean Infrastructure Cost Breakdown**
-              
-              • **{{ "{{" }} $labels.resource_name {{ "}}" }}** ({{ "{{" }} $labels.resource_type {{ "}}" }}): **${{ "{{" }} $value | humanize {{ "}}" }}/day**
-              • Specs: {{ "{{" }} $labels.specs {{ "}}" }}
-              • Region: {{ "{{" }} $labels.region {{ "}}" }}
-              
-              _Cost monitoring dashboard: https://grafana.duli.one/d/cost-monitoring_
+            summary: "⚠️ Cost Anomaly Detected"
+            description: "Daily cost deviation exceeds 25% from 7-day average. Check for unexpected resources."
