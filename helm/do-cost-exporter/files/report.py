@@ -34,6 +34,7 @@ def get_mtd_billing():
         "volumes": 0,
         "load_balancers": 0,
         "total": 0,
+        "by_resource": {},  # resource_name -> amount
     }
     
     try:
@@ -49,19 +50,38 @@ def get_mtd_billing():
             for item in data.get("invoice_items", []):
                 amount = float(item.get("amount", 0))
                 product = item.get("product", "").lower()
+                description = item.get("description", "")
                 
                 # Skip credits and taxes for category breakdown
                 if product in ["credits", "taxes"]:
                     continue
                 
+                # Extract resource name from description
+                # Droplet: "worker-01 (nyc3) - 2CPU 4096MB RAM 80GB Disk"
+                # Volume: "pvc-xxx (nyc3) - 2.00GB Volume"
+                # LB: "a39a558640e984a09a8ee28abbcbd00e"
+                resource_name = None
                 if "droplet" in product:
                     mtd["droplets"] += amount
+                    # Extract droplet name (first part before " (")
+                    match = re.match(r"^([^\s(]+)", description)
+                    if match:
+                        resource_name = match.group(1)
                 elif "volume" in product:
                     mtd["volumes"] += amount
+                    # Extract volume ID (pvc-xxx)
+                    match = re.match(r"^(pvc-[a-f0-9-]+)", description)
+                    if match:
+                        resource_name = match.group(1)
                 elif "load balancer" in product:
                     mtd["load_balancers"] += amount
+                    resource_name = "load_balancer"
                 
                 mtd["total"] += amount
+                
+                # Accumulate by resource
+                if resource_name:
+                    mtd["by_resource"][resource_name] = mtd["by_resource"].get(resource_name, 0) + amount
             
             # Get next page URL
             url = data.get("links", {}).get("pages", {}).get("next")
@@ -157,14 +177,35 @@ def format_discord_message(resources):
     # Get MTD billing from DO API
     mtd = get_mtd_billing()
     
+    # Add MTD to each droplet
+    droplets = [r for r in resources if r["type"] == "droplet"]
+    for droplet in droplets:
+        droplet["mtd"] = mtd["by_resource"].get(droplet["name"], 0) if mtd else 0
+    
+    # Add MTD to each volume group (sum up all PVCs in the group)
+    if mtd:
+        for vol_group in grouped_volumes:
+            vol_group["mtd"] = 0
+        # We need to track which PVCs belong to which service group
+        # This requires matching PVC names from invoice to our service mapping
+        for pv_name, service_name in pvc_map.items():
+            # Find matching volume group
+            for vol_group in grouped_volumes:
+                if vol_group["name"] == service_name:
+                    # Find MTD for this PVC
+                    vol_mtd = mtd["by_resource"].get(pv_name, 0)
+                    vol_group["mtd"] = vol_group.get("mtd", 0) + vol_mtd
+                    break
+    
     context = {
         "date": datetime.now().strftime('%Y-%m-%d'),
         "total_daily": total_cost,
         "total_monthly": total_cost * 30,
-        "droplets": [r for r in resources if r["type"] == "droplet"],
+        "droplets": droplets,
         "volumes": grouped_volumes,
         "lb_count": len(loadbalancers),
         "lb_cost": lb_total_cost,
+        "lb_mtd": mtd["by_resource"].get("load_balancer", 0) if mtd else 0,
         "mtd": mtd,
     }
     

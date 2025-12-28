@@ -6,16 +6,16 @@
 {% if droplets %}
 ### Droplets{% if mtd %} (MTD: ${{ "%.2f"|format(mtd.droplets) }}){% endif %}
 {% for r in droplets -%}
-• **{{ r.name }}**: ${{ "%.2f"|format(r.cost) }}/day - {{ r.specs }}
+• **{{ r.name }}**: ${{ "%.2f"|format(r.cost) }}/day{% if r.mtd %} | MTD: ${{ "%.2f"|format(r.mtd) }}{% endif %} - {{ r.specs }}
 {% endfor -%}
 {% endif -%}
 {% if volumes %}
 ### Volumes{% if mtd %} (MTD: ${{ "%.2f"|format(mtd.volumes) }}){% endif %}
 {% for r in volumes -%}
-• **{{ r.name }}**: ${{ "%.4f"|format(r.cost) }}/day - {{ r.size_gb }}GB ({{ r.count }} {% if r.count == 1 %}volume{% else %}volumes{% endif %})
+• **{{ r.name }}**: ${{ "%.4f"|format(r.cost) }}/day{% if r.mtd %} | MTD: ${{ "%.2f"|format(r.mtd) }}{% endif %} - {{ r.size_gb }}GB ({{ r.count }} {% if r.count == 1 %}volume{% else %}volumes{% endif %})
 {% endfor -%}
 {% endif -%}
 {% if lb_count > 0 %}
 ### Load Balancers{% if mtd %} (MTD: ${{ "%.2f"|format(mtd.load_balancers) }}){% endif %}
-• **{{ lb_count }} LB**: ${{ "%.2f"|format(lb_cost) }}/day
+• **{{ lb_count }} LB**: ${{ "%.2f"|format(lb_cost) }}/day{% if lb_mtd %} | MTD: ${{ "%.2f"|format(lb_mtd) }}{% endif %}
 {% endif %}
