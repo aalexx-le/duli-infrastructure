@@ -92,9 +92,14 @@ def get_costs():
 
 def group_volumes_by_service(volumes, pvc_map):
     """Group volumes by service and sum their costs"""
+    # Services to hide from report
+    hidden_services = ["loki (monitoring)", "grafana (monitoring)"]
+    
     grouped = {}
     for vol in volumes:
         service = pvc_map.get(vol["name"], "unknown")
+        if service in hidden_services:
+            continue
         if service not in grouped:
             grouped[service] = {"name": service, "cost": 0, "count": 0, "size_gb": 0}
         grouped[service]["cost"] += vol["cost"]
