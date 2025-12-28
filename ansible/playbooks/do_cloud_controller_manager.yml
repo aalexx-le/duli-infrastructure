@@ -70,7 +70,7 @@
               # Reflector sync configuration - replicate to monitoring namespace
               reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
               reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-              reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "monitoring"
+              reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "monitoring"
           type: Opaque
           stringData:
             access-token: "{{ vault_do_api_token }}"
@@ -79,7 +79,7 @@
       no_log: true
       run_once: true
 
-    - name: Ensure reflector annotations on digitalocean secret (existing or new)
+    - name: Ensure reflector annotations on digitalocean secret
       kubernetes.core.k8s:
         state: present
         kind: Secret
@@ -91,7 +91,7 @@
               # Reflector sync configuration - replicate to monitoring namespace
               reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
               reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
-              reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "monitoring"
+              reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "monitoring"
         kubeconfig: "{{ kubeconfig_path }}"
       no_log: true
       run_once: true
