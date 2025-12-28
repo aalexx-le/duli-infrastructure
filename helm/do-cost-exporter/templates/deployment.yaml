@@ -30,7 +30,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: {{ .Values.do.apiTokenSecret }}
-              key: token
+              key: {{ .Values.do.apiTokenKey }}
         - name: METRICS_PORT
           value: "{{ .Values.service.port }}"
         - name: POLL_INTERVAL
