@@ -330,7 +330,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: RELATED_IMAGE_KEYCLOAK
               value: quay.io/keycloak/keycloak:26.0.0
-          image: quay.io/keycloak/keycloak-operator:26.0.0
+          image: quay.io/keycloak/keycloak-operator:26.2.0
           imagePullPolicy: Always
           livenessProbe:
             failureThreshold: 3

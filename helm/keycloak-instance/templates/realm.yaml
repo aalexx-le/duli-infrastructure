@@ -5,8 +5,20 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   keycloakCRName: {{ .Release.Name }}
-  # Note: spec.placeholders requires Keycloak Operator 26.1+
-  # For 26.0.0, use unsupported.podTemplate in Keycloak CR to inject env vars
+  # Placeholder substitution for secrets (requires Keycloak Operator 26.1+)
+  placeholders:
+    OAUTH_GOOGLE_CLIENT_ID:
+      secret:
+        name: keycloak-oauth-credentials
+        key: google_client_id
+    OAUTH_GOOGLE_CLIENT_SECRET:
+      secret:
+        name: keycloak-oauth-credentials
+        key: google_client_secret
+    KEYCLOAK_BACKEND_SERVICE_SECRET:
+      secret:
+        name: keycloak-backend-service
+        key: client_secret
   realm:
     realm: duli
     enabled: true
