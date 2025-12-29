@@ -32,6 +32,29 @@ spec:
   http:
     httpEnabled: true
     httpsPort: 8443
+  # Inject OAuth secrets as environment variables for realm import ${VAR} substitution
+  # Required because Keycloak 26.0.0 operator doesn't have placeholders in CRD schema yet
+  unsupported:
+    podTemplate:
+      spec:
+        containers:
+          - name: keycloak
+            env:
+              - name: OAUTH_GOOGLE_CLIENT_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: keycloak-oauth-credentials
+                    key: google_client_id
+              - name: OAUTH_GOOGLE_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: keycloak-oauth-credentials
+                    key: google_client_secret
+              - name: KEYCLOAK_BACKEND_SERVICE_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: keycloak-backend-service
+                    key: client_secret
   {{- if .Values.monitoring.enabled }}
   serviceMonitor:
     enabled: {{ .Values.monitoring.enabled }}
