@@ -5,6 +5,21 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   keycloakCRName: {{ .Release.Name }}
+  # Placeholder substitution for secrets - the proper Keycloak Operator way
+  # Secrets must be in same namespace as Keycloak CR
+  placeholders:
+    OAUTH_GOOGLE_CLIENT_ID:
+      secret:
+        name: keycloak-oauth-credentials
+        key: google_client_id
+    OAUTH_GOOGLE_CLIENT_SECRET:
+      secret:
+        name: keycloak-oauth-credentials
+        key: google_client_secret
+    KEYCLOAK_BACKEND_SERVICE_SECRET:
+      secret:
+        name: keycloak-backend-service
+        key: client_secret
   realm:
     realm: duli
     enabled: true
