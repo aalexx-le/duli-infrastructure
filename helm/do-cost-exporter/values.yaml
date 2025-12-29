@@ -23,6 +23,6 @@ discord:
   secretName: discord-webhook-secret
   secretKey: webhook_url
 
-# CronJob schedule (daily at 9 AM UTC)
+# CronJob schedule (daily at 9 AM ICT / 2 AM UTC)
 report:
-  schedule: "0 9 * * *"
+  schedule: "0 2 * * *"
